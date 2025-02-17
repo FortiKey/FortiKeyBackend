@@ -1,0 +1,36 @@
+{
+  "name": "y",
+  "version": "1.0.0",
+  "description": "Backend implementation of a Two-Factor Authentication (2FA) API, designed for businesses to integrate into their applications for secure user authentication.",
+  "homepage": "https://github.com/FortiKey/FortiKeyBackend#readme",
+  "bugs": {
+    "url": "https://github.com/FortiKey/FortiKeyBackend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FortiKey/FortiKeyBackend.git"
+  },
+  "license": "MIT",
+  "author": "Nathan Keen",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.10.1",
+    "otpauth": "^9.3.6",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
