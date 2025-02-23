@@ -1,7 +1,7 @@
 const OTPAuth = require('otpauth'); // Import otpauth
 
 // Generate a TOTP secret
-const generateTOTPSecret = (businessName, userId) => {
+const generateTOTPSecret = (businessName, externalUserId) => {
     const totp = new OTPAuth.TOTP({
         issuer: businessName, // The name of the business
         label: externalUserId, // The user ID
