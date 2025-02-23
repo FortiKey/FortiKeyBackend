@@ -20,18 +20,17 @@ app.use(cors());  // Use cors
 app.use(express.json());  // Parse JSON bodies
 
 // Use the v1 routes
-app.use('api/v1', v1Routes.router);
+app.use('/api/v1', v1Routes.router);
 
 app.use((req, res, next) => {
     res.status(404).send('Route not found');
 });
 
-
 // Define a route to handle errors
 app.use((err, req, res, next) => {
     logger.error(err.stack);
     res.status(500).send('Something broke!');
-  });
+});
 
 // Start the server
 app.listen(port, () => {
