@@ -39,7 +39,7 @@ const login = async (req, res) => {
         }
         // Generate a JWT token
         const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
-        res.status(200).json({ token });
+        res.status(200).json({ token, userId: user._id });
     } catch (error) {
         logger.error("Error logging in user:", error.message);
         res.status(400).json({ message: error.message });
@@ -50,7 +50,7 @@ const login = async (req, res) => {
 const getProfile = async (req, res) => {
     try {
         // Get the user ID from the request
-        const user = await User.findById(req.userId);
+        const user = await User.findById(req.userId).select('businessName fullName email createdAt');
         // Return the user profile
         res.status(200).json(user);
     } catch (error) {

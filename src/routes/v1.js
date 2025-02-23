@@ -38,7 +38,7 @@ router.post('/totp-secrets/validate', validateTOTP);  // Validate a TOTP token
 // auth routes
 router.post('/business/register', register);
 router.post('/business/login', login);
-router.get('/business/profile', authMiddleware, getProfile);
+router.get('/business/profile/:userId', authMiddleware, getProfile);
 router.patch('/business/profile/:userId', authMiddleware, updateUser);
 router.delete('/business/profile/:userId', authMiddleware, deleteUser);
 router.post('/business/apikey', authMiddleware, generateAPIKey);

@@ -2,6 +2,11 @@ const jwt = require('jsonwebtoken');
 const { logger } = require('./logger');
 
 const authMiddleware = async (req, res, next) => {
+    const authHeader = req.header('Authorization');
+    if (!authHeader) {
+        logger.error('No token provided');
+        return res.status(401).json({ message: 'No token provided' });
+    }
     const token = req.header('Authorization').replace('Bearer ', '');
     if (!token) {
         logger.error('No token provided');
