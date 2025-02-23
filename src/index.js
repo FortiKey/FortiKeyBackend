@@ -1,30 +1,31 @@
 const express = require('express');  // Import express
 const dotenv = require('dotenv');   // Import dotenv
-const winston = require('winston');  // Import winston
+const helmet = require('helmet');  // Import helmet
+const cors = require('cors');  // Import cors
 const { connectDB } = require('./config/db');  // Import connectDB function
+const v1Routes = require('./routes/v1');  // Import v1 routes
+const { logger } = require('./middlewares/logger');  // Import logger
 
 dotenv.config();  // Initialise dotenv
 
 const app = express();  // Create an express app
-const port = process.env.PORT || 5000;  // Define the port
-
-const logger = winston.createLogger({  // Create a logger
-    level: 'info',
-    format: winston.format.json(),
-    defaultMeta: { service: 'user-service' },
-    transports: [
-        new winston.transports.Console(),
-    new winston.transports.File({ filename: 'combined.log' }),
-    ],
-});
+const port = process.env.PORT || 3000;  // Define the port
 
 // Connect to the database
 connectDB();
 
-// Define a route to check the health of the server
-app.get('/health', (req, res) => {
-    res.status(200).send('Server is healthy!');
+// Use middleware
+app.use(helmet());  // Use helmet
+app.use(cors());  // Use cors
+app.use(express.json());  // Parse JSON bodies
+
+// Use the v1 routes
+app.use('api/v1', v1Routes.router);
+
+app.use((req, res, next) => {
+    res.status(404).send('Route not found');
 });
+
 
 // Define a route to handle errors
 app.use((err, req, res, next) => {
@@ -34,6 +35,7 @@ app.use((err, req, res, next) => {
 
 // Start the server
 app.listen(port, () => {
+    logger.info(`Server is running on port ${port}`);
     console.log(`Server is running on port ${port}`);
 });
 
