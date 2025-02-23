@@ -5,25 +5,42 @@ const { logger } = require('../middlewares/logger');  // Import the logger
 // Create a new TOTP secret
 const createTOTPSecret = async (req, res) => {
     try {
-        // Get the business name and external user ID from the request body
         const { businessName, externalUserId, backupCodes } = req.body;
+
+        if (!businessName || !externalUserId || !backupCodes) {
+            logger.error("Missing required fields");
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
         // Generate a new TOTP secret
-        const secret = generateTOTPSecret(businessName, externalUserId);
-        // Create a new TOTP secret document
+        const { secret, uri } = generateTOTPSecret(businessName, externalUserId);
+
+        if (!secret) {
+            logger.error("Failed to generate TOTP secret");
+            return res.status(500).json({ message: 'Failed to generate TOTP secret' });
+        }
+
+        // Create and save the TOTP secret document
         const newTOTPSecret = new TOTPSecret({
             secret,
             backupCodes,
             externalUserId,
         });
-        // Save the TOTP secret document
-        await newTOTPSecret.save();
+
+        // Save the TOTP secret
+        const savedSecret = await newTOTPSecret.save();
+
         // Return the TOTP secret
-        return res.status(201).json({ secret });
+        return res.status(201).json({
+            _id: savedSecret._id,
+            secret: savedSecret.decryptSecret(),
+            backupCodes: savedSecret.decryptBackupCodes(), 
+            uri,
+        });
+
     } catch (error) {
-        // Log the error
-        logger.error(error.message);
-        // Return an error response
-        return res.status(500).json({ message: 'Error creating TOTP secret' });
+        logger.error("Error creating TOTP secret:", error.message);
+        return res.status(500).json({ message: 'Error creating TOTP secret', error: error.message });
     }
 };
 
@@ -67,18 +84,22 @@ const getTOTPSecretById = async (req, res) => {
     try {
         // Get the MongoDB document ID from the request parameters
         const { id } = req.params;
+
         // Find the TOTP secret by MongoDB document ID
         const totpSecret = await TOTPSecret.findById(id);
         if (!totpSecret) {
             return res.status(404).json({ message: 'TOTP secret not found' });
         }
+
         // Return the TOTP secret
-        return res.status(200).json(totpSecret);
+        return res.status(200).json({
+            _id: totpSecret._id, // Return the MongoDB document ID
+            secret: totpSecret.decryptSecret(), // Decrypt the secret
+            backupCodes: totpSecret.decryptBackupCodes(), // Decrypt the backup codes
+            externalUserId: totpSecret.externalUserId // Return the external user ID
+        });
     } catch (error) {
-        // Log the error
-        logger.error(error.message);
-        // Return an error response
-        return res.status(500).json({ message: 'Error retrieving TOTP secret' });
+        return res.status(500).json({ message: 'Error retrieving TOTP secret by ID', error: error.message });
     }
 };
 
@@ -125,27 +146,36 @@ const deleteTOTPSecret = async (req, res) => {
 // validate a TOTP Token
 const validateTOTP = async (req, res) => {
     try {
-        // Get the external user ID and token from the request body
         const { externalUserId, token } = req.body;
+
         // Find the TOTP secret by external user ID
         const totpSecret = await TOTPSecret.findOne({ externalUserId });
         if (!totpSecret) {
             return res.status(404).json({ message: 'TOTP secret not found' });
         }
-        // Decrypt the TOTP secret
+
+        // Decrypt the stored secret
         const decryptedSecret = totpSecret.decryptSecret();
-        // Validate the token
-        const isValid = validateTOTPToken(decryptedSecret, token);
-        if (!isValid) {
+
+        const OTPAuth = require('otpauth');
+        const totp = new OTPAuth.TOTP({
+            secret: OTPAuth.Secret.fromBase32(decryptedSecret),
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30
+        });
+
+        // Validate the token using the `validate` method
+        const delta = totp.validate({ token, window: 1 });
+
+        if (delta === null) {
             return res.status(400).json({ message: 'Invalid TOTP token' });
         }
-        // Return a success response
+
         return res.status(200).json({ message: 'TOTP token is valid' });
+
     } catch (error) {
-        // Log the error
-        logger.error(error.message);
-        // Return an error response
-        return res.status(500).json({ message: 'Error validating TOTP token' });
+        return res.status(500).json({ message: 'Error validating TOTP token', error: error.message });
     }
 };
 
