@@ -111,6 +111,31 @@ describe('Authentication API', () => {
         expect(res.body).toHaveProperty('email', 'test@email.com');  // Check the response body
     });
 
+    // Test updating the user profile
+    it('should update the user profile', async () => {
+        // Send a request to update the user profile
+        const res = await request(app)
+            .put(`/api/v1/business/profile/${userId}`) // Send a request to update the user profile
+            .set('Authorization', `Bearer ${token}`)  // Set the Authorization header
+            .send({  // Send the request body
+                businessName: 'UpdatedBusinessName'
+            });
+        // Check the response
+        expect(res.statusCode).toEqual(200); // Check the status code
+        expect(res.body).toHaveProperty('businessName', 'UpdatedBusinessName');  // Check the response body
+    });
+
+    // Test deleting the user profile
+    it('should delete the user profile', async () => {
+        // Send a request to delete the user profile
+        const res = await request(app)
+            .delete(`/api/v1/business/profile/${userId}`) // Send a request to delete the user profile
+            .set('Authorization', `Bearer ${token}`);  // Set the Authorization header
+        // Check the response
+        expect(res.statusCode).toEqual(204); // Check the status code
+        expect(res.body).toHaveProperty('message', 'Profile deleted');  // Check the response body
+    });
+
     // Test generating an API key
     it('should generate an API key', async () => {
         // Send a request to generate an API key
@@ -121,4 +146,17 @@ describe('Authentication API', () => {
         expect(res.statusCode).toEqual(201); // Check the status code
         expect(res.body).toHaveProperty('apiKey');  // Check the response body
     });
+
+    // Test deleting an API key
+    it('should delete an API key', async () => {
+        // Send a request to delete an API key
+        const res = await request(app)
+            .delete('/api/v1/business/api-key') // Send a request to delete an API key
+            .set('Authorization', `Bearer ${token}`);  // Set the Authorization header
+        // Check the response
+        expect(res.statusCode).toEqual(204); // Check the status code
+        expect(res.body).toHaveProperty('message', 'API key deleted');  // Check the response body
+    });
+
+
 });
