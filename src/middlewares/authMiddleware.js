@@ -24,3 +24,5 @@ const authMiddleware = async (req, res, next) => {
 };
 
 module.exports = { authMiddleware };
+
+// In this file, we define an authMiddleware function that checks for a valid JWT token in the Authorisation header of the request. If the token is missing or invalid, the middleware logs an error message and returns a 401 Unauthorised response. If the token is valid, the middleware decodes the token and extracts the userId, which is then added to the request object for use in subsequent middleware or route handlers. The authMiddleware function is exported so that it can be used in other parts of the application.

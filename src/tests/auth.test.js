@@ -110,7 +110,7 @@ describe('Authentication API', () => {
     it('should get the user profile', async () => {
         // Send a request to get the user profile
         const res = await request(app)
-            .get('/api/v1/business/profile') // Send a request to get the user profile
+            .get(`/api/v1/business/profile/${userId}`) // Send a request to get the user profile
             .set('Authorization', `Bearer ${token}`);  // Set the Authorization header
         // Check the response
         expect(res.statusCode).toEqual(200); // Check the status code

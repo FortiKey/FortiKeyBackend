@@ -26,6 +26,9 @@ router.get('/health', (req, res) => {  // Define a route for the health check
     res.status(200).send('Server is healthy!');  // Send a response
 });
 
+// test routes
+
+
 // TOTP secret routes
 router.post('/totp-secrets', createTOTPSecret);  // Create a new TOTP secret
 router.get('/totp-secrets', getAllTOTPSecrets);  // Get all TOTP secrets
