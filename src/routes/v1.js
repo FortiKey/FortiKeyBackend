@@ -36,13 +36,13 @@ router.delete('/totp-secrets/:id', deleteTOTPSecret);  // Delete a TOTP secret b
 router.post('/totp-secrets/validate', validateTOTP);  // Validate a TOTP token
 
 // auth routes
-router.post('/business/register', register);
-router.post('/business/login', login);
-router.get('/business/profile/:userId', authMiddleware, getProfile);
-router.patch('/business/profile/:userId', authMiddleware, updateUser);
-router.delete('/business/profile/:userId', authMiddleware, deleteUser);
-router.post('/business/apikey', authMiddleware, generateAPIKey);
-router.delete('/business/apikey', authMiddleware, deleteAPIKey);
+router.post('/business/register', register);  // Register a new user
+router.post('/business/login', login);  // Login an existing user
+router.get('/business/profile/:userId', authMiddleware, getProfile);  // Get user profile
+router.patch('/business/profile/:userId', authMiddleware, updateUser);  // Update user profile
+router.delete('/business/profile/:userId', authMiddleware, deleteUser);  // Delete user profile
+router.post('/business/apikey', authMiddleware, generateAPIKey);  // Generate an API key
+router.delete('/business/apikey', authMiddleware, deleteAPIKey);  // Delete an API key
 
 
 module.exports = {
