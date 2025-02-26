@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { logger } = require('../config/logger');
+const { logger } = require('../middlewares/logger');
 
 const UsageSchema = new mongoose.Schema({
     // reference to the business (User) who performed the action
