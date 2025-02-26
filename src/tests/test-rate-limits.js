@@ -56,7 +56,7 @@ const testTOTPRateLimit = async () => {
 // Test general API rate limiting (100 requests per 15 min)
 const testAPIRateLimit = async () => {
   console.log('\n===== Testing General API Rate Limiting =====');
-  const endpoint = `${API_URL}/health`;  // Using health endpoint as it should be publicly accessible
+  const endpoint = `${API_URL}/health`;  // Using health endpoint 
   
   for (let i = 1; i <= TOTAL_REQUESTS; i++) {
     try {
