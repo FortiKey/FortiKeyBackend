@@ -25,7 +25,6 @@ const {
     totpLimiter 
 } = require('../middlewares/rateLimiter');
 const {
-    logEvent,
     getBusinessStats,
     getTOTPStats,
     getFailureAnalytics,

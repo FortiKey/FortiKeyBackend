@@ -13,9 +13,10 @@ const logRateLimitExceeded = (req, res, next) => {
       method: req.method
     }
   }, req);
-  
-  next();
-};
+  // Continue with the request
+  if (typeof next === 'function') {
+    next();
+}};
 
 module.exports = {
   logRateLimitExceeded
