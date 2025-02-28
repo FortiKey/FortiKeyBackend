@@ -1,10 +1,32 @@
+// services/usageService.js
 const mongoose = require('mongoose');
-const Usage = require('../models/usageModel');
+const { Types } = mongoose;
+const { Usage } = require('../models/usageModel');
 const { logger } = require('../middlewares/logger');
 
 /**
+ * Convert any valid ID format to MongoDB ObjectId
+ * @param {string|ObjectId} id - ID to convert
+ * @returns {ObjectId|null} - MongoDB ObjectId or null if invalid
+ */
+const toObjectId = (id) => {
+  if (!id) return null;
+  
+  if (id instanceof Types.ObjectId) {
+    return id;
+  }
+  
+  try {
+    return new Types.ObjectId(String(id));
+  } catch (error) {
+    console.error('Invalid ID format:', id);
+    return null;
+  }
+};
+
+/**
  * Get business usage stats for a period
- * @param {string} businessId - The business ID
+ * @param {string|ObjectId} businessId - The business ID
  * @param {number} period - Period in days (default: 30)
  * @returns {Promise<Array>} - Business statistics
  */
@@ -12,11 +34,15 @@ const getBusinessStats = async (businessId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
   
+  // Convert businessId to ObjectId
+  const businessIdObj = toObjectId(businessId);
+  if (!businessIdObj) return [];
+  
   try {
-    return await Usage.aggregate([  // Aggregate usage data
+    return await Usage.aggregate([
       { 
         $match: { 
-          businessId: mongoose.Types.ObjectId(businessId),
+          businessId: businessIdObj,
           timestamp: { $gte: startDate }
         } 
       },
@@ -60,7 +86,7 @@ const getBusinessStats = async (businessId, period = 30) => {
 
 /**
  * Calculate authentication success/failure summary
- * @param {string} businessId - The business ID
+ * @param {string|ObjectId} businessId - The business ID
  * @param {number} period - Period in days
  * @returns {Promise<Object>} - Authentication summary
  */
@@ -68,15 +94,19 @@ const getAuthenticationSummary = async (businessId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
   
+  // Convert businessId to ObjectId
+  const businessIdObj = toObjectId(businessId);
+  if (!businessIdObj) return { totalEvents: 0, successfulEvents: 0, failedEvents: 0, successRate: '0%' };
+  
   try {
     const totalEvents = await Usage.countDocuments({
-      businessId,
+      businessId: businessIdObj,
       timestamp: { $gte: startDate },
       eventType: { $in: ['totp_validation', 'backup_code_used'] }
     });
     
     const successfulEvents = await Usage.countDocuments({
-      businessId,
+      businessId: businessIdObj,
       timestamp: { $gte: startDate },
       eventType: { $in: ['totp_validation', 'backup_code_used'] },
       success: true
@@ -106,7 +136,7 @@ const getAuthenticationSummary = async (businessId, period = 30) => {
 
 /**
  * Get TOTP-specific statistics
- * @param {string} businessId - The business ID
+ * @param {string|ObjectId} businessId - The business ID
  * @param {number} period - Period in days
  * @returns {Promise<Array>} - TOTP statistics
  */
@@ -114,11 +144,15 @@ const getTOTPStats = async (businessId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
   
+  // Convert businessId to ObjectId
+  const businessIdObj = toObjectId(businessId);
+  if (!businessIdObj) return [];
+  
   try {
     return await Usage.aggregate([
       {
         $match: {
-          businessId: mongoose.Types.ObjectId(businessId),
+          businessId: businessIdObj,
           eventType: { $in: ['totp_setup', 'totp_validation', 'backup_code_used'] },
           timestamp: { $gte: startDate }
         }
@@ -149,19 +183,16 @@ const getTOTPStats = async (businessId, period = 30) => {
  * @returns {Object} - TOTP summary
  */
 const calculateTOTPSummary = (totpStats) => {
-  const totpSetups = totpStats.filter(s => s._id.eventType === 'totp_setup');  
-  const totpValidations = totpStats.filter(s => s._id.eventType === 'totp_validation');  
+  const totpSetups = totpStats.filter(s => s._id.eventType === 'totp_setup');
+  const totpValidations = totpStats.filter(s => s._id.eventType === 'totp_validation');
   const backupCodeUsage = totpStats.filter(s => s._id.eventType === 'backup_code_used');
   
-  // Calculate success rates
   const setupSuccess = totpSetups.filter(s => s._id.success).reduce((sum, item) => sum + item.count, 0);
   const setupTotal = totpSetups.reduce((sum, item) => sum + item.count, 0);
   
-  // Calculate validation success rates
   const validationSuccess = totpValidations.filter(s => s._id.success).reduce((sum, item) => sum + item.count, 0);
   const validationTotal = totpValidations.reduce((sum, item) => sum + item.count, 0);
   
-  // Return summary data
   return {
     setupSuccessRate: setupTotal ? (setupSuccess / setupTotal * 100).toFixed(2) + '%' : 'N/A',
     validationSuccessRate: validationTotal ? (validationSuccess / validationTotal * 100).toFixed(2) + '%' : 'N/A',
@@ -173,7 +204,7 @@ const calculateTOTPSummary = (totpStats) => {
 
 /**
  * Get failure statistics
- * @param {string} businessId - The business ID
+ * @param {string|ObjectId} businessId - The business ID
  * @param {number} period - Period in days
  * @returns {Promise<Object>} - Failure statistics
  */
@@ -181,11 +212,15 @@ const getFailureStats = async (businessId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
   
+  // Convert businessId to ObjectId
+  const businessIdObj = toObjectId(businessId);
+  if (!businessIdObj) return { failures: [], totalEvents: 0, totalFailures: 0, failureRate: 0 };
+  
   try {
     const failures = await Usage.aggregate([
       {
         $match: {
-          businessId: mongoose.Types.ObjectId(businessId),
+          businessId: businessIdObj,
           success: false,
           timestamp: { $gte: startDate }
         }
@@ -204,15 +239,13 @@ const getFailureStats = async (businessId, period = 30) => {
       }
     ]);
     
-    // Get total events and total failures
     const totalEvents = await Usage.countDocuments({
-      businessId: mongoose.Types.ObjectId(businessId),
+      businessId: businessIdObj,
       timestamp: { $gte: startDate }
     });
     
-    // Get total failures
     const totalFailures = await Usage.countDocuments({
-      businessId: mongoose.Types.ObjectId(businessId),
+      businessId: businessIdObj,
       success: false,
       timestamp: { $gte: startDate }
     });
@@ -299,7 +332,7 @@ const getUserTOTPStats = async (externalUserId, period = 30) => {
 
 /**
  * Get suspicious activity data
- * @param {string} businessId - The business ID
+ * @param {string|ObjectId} businessId - The business ID
  * @param {number} period - Period in days
  * @returns {Promise<Object>} - Suspicious activity data
  */
@@ -307,12 +340,16 @@ const getSuspiciousActivity = async (businessId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
   
+  // Convert businessId to ObjectId
+  const businessIdObj = toObjectId(businessId);
+  if (!businessIdObj) return { suspiciousUsers: [], suspiciousEvents: [] };
+  
   try {
     // First, get typical patterns
     const typicalUserActivity = await Usage.aggregate([
       {
         $match: {
-          businessId: mongoose.Types.ObjectId(businessId),
+          businessId: businessIdObj,
           timestamp: { $gte: startDate },
           eventType: { $in: ['totp_validation', 'backup_code_used'] }
         }
@@ -348,7 +385,7 @@ const getSuspiciousActivity = async (businessId, period = 30) => {
     const suspiciousUserIds = suspiciousUsers.map(user => user._id);
     
     const suspiciousEvents = await Usage.find({
-      businessId: mongoose.Types.ObjectId(businessId),
+      businessId: businessIdObj,
       externalUserId: { $in: suspiciousUserIds },
       timestamp: { $gte: startDate },
       eventType: { $in: ['totp_validation', 'backup_code_used'] }
@@ -369,7 +406,7 @@ const getSuspiciousActivity = async (businessId, period = 30) => {
 
 /**
  * Get device breakdown based on user agents
- * @param {string} businessId - The business ID
+ * @param {string|ObjectId} businessId - The business ID
  * @param {number} period - Period in days
  * @returns {Promise<Array>} - Device breakdown
  */
@@ -377,11 +414,15 @@ const getDeviceBreakdown = async (businessId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
   
+  // Convert businessId to ObjectId
+  const businessIdObj = toObjectId(businessId);
+  if (!businessIdObj) return [];
+  
   try {
     return await Usage.aggregate([
       {
         $match: {
-          businessId: mongoose.Types.ObjectId(businessId),
+          businessId: businessIdObj,
           timestamp: { $gte: startDate },
           userAgent: { $exists: true, $ne: null }
         }
@@ -486,7 +527,7 @@ const processDeviceData = (deviceBreakdown) => {
 
 /**
  * Get backup code usage statistics
- * @param {string} businessId - The business ID
+ * @param {string|ObjectId} businessId - The business ID
  * @param {number} period - Period in days
  * @returns {Promise<Object>} - Backup code usage data
  */
@@ -494,12 +535,22 @@ const getBackupCodeUsage = async (businessId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
   
+  // Convert businessId to ObjectId
+  const businessIdObj = toObjectId(businessId);
+  if (!businessIdObj) return {
+    backupCodeStats: [],
+    totpCount: 0,
+    backupCount: 0,
+    backupToTotpRatio: '0%',
+    frequentBackupUsers: []
+  };
+  
   try {
     // Get backup code usage stats
     const backupCodeStats = await Usage.aggregate([
       {
         $match: {
-          businessId: mongoose.Types.ObjectId(businessId),
+          businessId: businessIdObj,
           eventType: 'backup_code_used',
           timestamp: { $gte: startDate }
         }
@@ -521,14 +572,13 @@ const getBackupCodeUsage = async (businessId, period = 30) => {
     
     // Calculate comparison with TOTP usage
     const totpCount = await Usage.countDocuments({
-      businessId: mongoose.Types.ObjectId(businessId),
+      businessId: businessIdObj,
       eventType: 'totp_validation',
       timestamp: { $gte: startDate }
     });
     
-    // Count backup code usage
     const backupCount = await Usage.countDocuments({
-      businessId: mongoose.Types.ObjectId(businessId),
+      businessId: businessIdObj,
       eventType: 'backup_code_used',
       timestamp: { $gte: startDate }
     });
@@ -537,7 +587,7 @@ const getBackupCodeUsage = async (businessId, period = 30) => {
     const frequentBackupUsers = await Usage.aggregate([
       {
         $match: {
-          businessId: mongoose.Types.ObjectId(businessId),
+          businessId: businessIdObj,
           eventType: 'backup_code_used',
           timestamp: { $gte: startDate }
         }
@@ -582,7 +632,7 @@ const getBackupCodeUsage = async (businessId, period = 30) => {
 
 /**
  * Get time-based comparisons
- * @param {string} businessId - The business ID
+ * @param {string|ObjectId} businessId - The business ID
  * @param {number} period - Period in days
  * @returns {Promise<Object>} - Time comparison data
  */
@@ -591,12 +641,23 @@ const getTimeComparisons = async (businessId, period = 7) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
   
+  // Convert businessId to ObjectId
+  const businessIdObj = toObjectId(businessId);
+  if (!businessIdObj) return {
+    dayOverDayComparison: [],
+    businessHoursSummary: {
+      businessHoursCount: 0,
+      offHoursCount: 0,
+      businessHoursPercentage: '0%'
+    }
+  };
+  
   try {
     // Get hourly breakdown of authentication attempts
     const hourlyBreakdown = await Usage.aggregate([
       {
         $match: {
-          businessId: mongoose.Types.ObjectId(businessId),
+          businessId: businessIdObj,
           eventType: { $in: ['totp_validation', 'backup_code_used'] },
           timestamp: { $gte: startDate }
         }
