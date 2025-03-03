@@ -32,7 +32,8 @@ describe('Authentication API', () => {
         const res = await request(app)
             .post('/api/v1/business/register')
             .send({
-                fullName: 'mary smith',
+                firstName: 'mary',
+                lastName: 'smith',
                 businessName: 'TestBusiness',
                 email: 'test@email.com',
                 password: 'password'
@@ -50,7 +51,8 @@ describe('Authentication API', () => {
         const res = await request(app)
             .post('/api/v1/business/register') // Send a request to register a user
             .send({  // Send the request body
-                fullName: 'mary smith',
+                firstName: 'mary',
+                lastName: 'smith',
                 businessName: 'TestBusiness',
                 email: 'test@email.com',
                 password: 'password'
@@ -138,7 +140,7 @@ describe('Authentication API', () => {
         // Send a request to generate an API key
         const res = await request(app)
             .post('/api/v1/business/apikey') // Send a request to generate an API key
-            .set('Authorization', `Bearer ${token}`);  // Set the Authorization header
+            .set('Authorization', `Bearer ${token}`);  // Set the Authorisation header
         // Check the response
         expect(res.statusCode).toEqual(201); // Check the status code
         expect(res.body).toHaveProperty('apiKey');  // Check the response body
@@ -149,7 +151,7 @@ describe('Authentication API', () => {
         // Send a request to delete an API key
         const res = await request(app)
             .delete('/api/v1/business/apikey') // Send a request to delete an API key
-            .set('Authorization', `Bearer ${token}`);  // Set the Authorization header
+            .set('Authorization', `Bearer ${token}`);  // Set the Authorisation header
         // Check the response
         expect(res.statusCode).toEqual(204); // Check the status code
     });
@@ -159,7 +161,7 @@ describe('Authentication API', () => {
         // Send a request to delete the user profile
         const res = await request(app)
             .delete(`/api/v1/business/profile/${userId}`) // Send a request to delete the user profile
-            .set('Authorization', `Bearer ${token}`);  // Set the Authorization header
+            .set('Authorization', `Bearer ${token}`);  // Set the Authorisation header
         // Check the response
         expect(res.statusCode).toEqual(204); // Check the status code
     });

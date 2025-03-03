@@ -34,7 +34,8 @@ beforeAll(async () => {
     // Create a test user
     testUser = new User({
         businessName: 'TOTP Test Business',
-        fullName: 'TOTP Test User',
+        firstName: 'Test',
+        lastName: 'User',
         email: 'totptester@example.com',
         password: 'password123'
     });

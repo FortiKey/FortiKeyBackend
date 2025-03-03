@@ -6,7 +6,7 @@ const { logger } = require('../middlewares/logger');
 const register = async (req, res) => {
     try {
         // Extract the user details from the request body
-        const { businessName, fullName, email, password } = req.body;
+        const { businessName, firstName, lastName, email, password } = req.body;
 
         // Check if the email is already registered
         const existingUser = await User.findOne({ email });
@@ -15,7 +15,7 @@ const register = async (req, res) => {
         }
 
         // Create a new user document
-        const user = new User({ businessName, fullName, email, password });
+        const user = new User({ businessName, firstName, lastName, email, password });
         await user.save();
 
         // Generate a JWT token
@@ -50,7 +50,7 @@ const login = async (req, res) => {
 const getProfile = async (req, res) => {
     try {
         // Get the user ID from the request
-        const user = await User.findById(req.userId).select('businessName fullName email createdAt');
+        const user = await User.findById(req.userId).select('businessName firstName lastName email createdAt');
         // Return the user profile
         res.status(200).json(user);
     } catch (error) {
@@ -100,8 +100,8 @@ const generateAPIKey = async (req, res) => {
     try {
         // Get the user ID from the request
         if (!req.userId) {
-            logger.error('Unauthorized: No user ID provided');
-            return res.status(401).json({ message: 'Unauthorized: No user ID provided' });
+            logger.error('Unauthorised: No user ID provided');
+            return res.status(401).json({ message: 'Unauthorised: No user ID provided' });
         }
         // Find the user by ID
         const user = await User.findById(req.userId);
@@ -124,8 +124,8 @@ const deleteAPIKey = async (req, res) => {
     try {
         // Get the user ID from the request
         if (!req.userId) {
-            logger.error('Unauthorized: No user ID provided');
-            return res.status(401).json({ message: 'Unauthorized: No user ID provided' });
+            logger.error('Unauthorised: No user ID provided');
+            return res.status(401).json({ message: 'Unauthorised: No user ID provided' });
         }
         // Find the user by ID
         const user = await User.findById(req.userId);

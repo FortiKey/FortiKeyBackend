@@ -1,5 +1,6 @@
 const rateLimit = require('express-rate-limit');
 const { logger } = require('./logger');
+const { logRateLimitExceeded } = require('./analyticsMiddleware');
 
 // Create a limiter for API endpoints
 const apiLimiter = rateLimit({
@@ -8,9 +9,13 @@ const apiLimiter = rateLimit({
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
     handler: (req, res) => {
-        logger.warn(`Rate limit exceeded for IP: ${req.ip}`);
-        return res.status(429).json({
-            message: 'Too many requests from this IP, please try again later.'
+        // First log the rate limit event
+        logRateLimitExceeded(req, res, () => {
+            // Then execute the normal rate limit handler
+            logger.warn(`Rate limit exceeded for IP: ${req.ip}`);
+            return res.status(429).json({
+                message: 'Too many requests from this IP, please try again later.'
+            });
         });
     }
 });
@@ -22,9 +27,13 @@ const authLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     handler: (req, res) => {
-        logger.warn(`Auth rate limit exceeded for IP: ${req.ip}`);
-        return res.status(429).json({
-            message: 'Too many failed attempts, please try again later.'
+        // First log the rate limit event
+        logRateLimitExceeded(req, res, () => {
+            // Then execute the normal rate limit handler
+            logger.warn(`Auth rate limit exceeded for IP: ${req.ip}`);
+            return res.status(429).json({
+                message: 'Too many failed attempts, please try again later.'
+            });
         });
     }
 });
@@ -36,9 +45,13 @@ const totpLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     handler: (req, res) => {
-        logger.warn(`TOTP validation rate limit exceeded for IP: ${req.ip}`);
-        return res.status(429).json({
-            message: 'Too many TOTP validation attempts, please try again later.'
+        // First log the rate limit event
+        logRateLimitExceeded(req, res, () => {
+            // Then execute the normal rate limit handler
+            logger.warn(`TOTP validation rate limit exceeded for IP: ${req.ip}`);
+            return res.status(429).json({
+                message: 'Too many TOTP validation attempts, please try again later.'
+            });
         });
     }
 });
