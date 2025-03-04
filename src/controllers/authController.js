@@ -6,7 +6,7 @@ const { logger } = require('../middlewares/logger');
 const register = async (req, res) => {
     try {
         // Extract the user details from the request body
-        const { businessName, firstName, lastName, email, password } = req.body;
+        const { company, firstName, lastName, email, password } = req.body;
 
         // Check if the email is already registered
         const existingUser = await User.findOne({ email });
@@ -15,7 +15,7 @@ const register = async (req, res) => {
         }
 
         // Create a new user document
-        const user = new User({ businessName, firstName, lastName, email, password });
+        const user = new User({ company, firstName, lastName, email, password });
         await user.save();
 
         // Generate a JWT token
@@ -50,7 +50,7 @@ const login = async (req, res) => {
 const getProfile = async (req, res) => {
     try {
         // Get the user ID from the request
-        const user = await User.findById(req.userId).select('businessName firstName lastName email createdAt');
+        const user = await User.findById(req.userId).select('company firstName lastName email createdAt');
         // Return the user profile
         res.status(200).json(user);
     } catch (error) {

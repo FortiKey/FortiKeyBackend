@@ -25,7 +25,7 @@ const {
     totpLimiter 
 } = require('../middlewares/rateLimiter');
 const {
-    getBusinessStats,
+    getCompanyStats,
     getTOTPStats,
     getFailureAnalytics,
     getUserTOTPStats,
@@ -63,7 +63,7 @@ router.post('/business/apikey', authMiddleware, apiLimiter, generateAPIKey);  //
 router.delete('/business/apikey', authMiddleware, apiLimiter, deleteAPIKey);  // Delete an API key
 
 // Analytics routes
-router.get('/analytics/business', authMiddleware, apiLimiter, getBusinessStats);  // Get business analytics
+router.get('/analytics/business', authMiddleware, apiLimiter, getCompanyStats);  // Get business analytics
 router.get('/analytics/totp', authMiddleware, apiLimiter, getTOTPStats);  // Get TOTP analytics
 router.get('/analytics/failures', authMiddleware, apiLimiter, getFailureAnalytics);  // Get failure analytics
 router.get('/analytics/users/:externalUserId/totp', authMiddleware, apiLimiter, getUserTOTPStats);  // Get user TOTP analytics

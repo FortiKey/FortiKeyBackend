@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 const { logger } = require('../middlewares/logger');
 
 const UsageSchema = new mongoose.Schema({
-    // reference to the business (User) who performed the action
-    businessId: {
-        type : mongoose.Schema.Types.ObjectId,
-        ref : 'User',
+    // reference to the company (User) who performed the action
+    companyId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
         required: false,
         index: true,
     },
@@ -27,8 +27,8 @@ const UsageSchema = new mongoose.Schema({
             'backup_code_used',    // Backup code used
             'api_key_generated',   // API key generation
             'api_key_deleted',     // API key deletion
-            'registration',        // New business registration
-            'login',               // Business login
+            'registration',        // New company registration
+            'login',               // Company login
             'profile_access',      // Profile information access
             'profile_update',      // Profile information update
             'profile_delete',      // Profile deletion
@@ -63,7 +63,7 @@ const UsageSchema = new mongoose.Schema({
     userAgent: {
         type: String,
         required: false,
-    },  
+    },
 
     // Timestamp
     timestamp: {
@@ -74,22 +74,22 @@ const UsageSchema = new mongoose.Schema({
 });
 
 // Compound index for common queries
-UsageSchema.index({ businessId: 1, eventType: 1, timestamp: -1 });
+UsageSchema.index({ companyId: 1, eventType: 1, timestamp: -1 });
 UsageSchema.index({ externalUserId: 1, timestamp: -1 });
 UsageSchema.index({ eventType: 1, success: 1, timestamp: -1 });
 
 // static method to log an event
-UsageSchema.statics.logEvent = async function(eventData) {
+UsageSchema.statics.logEvent = async function (eventData) {
     try {
-      const usage = new this(eventData);
-      await usage.save();
-      return usage;
+        const usage = new this(eventData);
+        await usage.save();
+        return usage;
     } catch (error) {
-      logger.error('Error logging usage event:', error.message);
-      // Don't throw - logging should never break the main flow
-      return null;
+        logger.error('Error logging usage event:', error.message);
+        // Don't throw - logging should never break the main flow
+        return null;
     }
-  };
+};
 
 const Usage = mongoose.model('Usage', UsageSchema);
 

@@ -5,15 +5,15 @@ const { logger } = require('../middlewares/logger');  // Import the logger
 // Create a new TOTP secret
 const createTOTPSecret = async (req, res) => {
     try {
-        const { businessName, externalUserId, backupCodes } = req.body;
+        const { company, externalUserId, backupCodes } = req.body;
 
-        if (!businessName || !externalUserId || !backupCodes) {
+        if (!company || !externalUserId || !backupCodes) {
             logger.error("Missing required fields");
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
         // Generate a new TOTP secret
-        const { secret, uri } = generateTOTPSecret(businessName, externalUserId);
+        const { secret, uri } = generateTOTPSecret(company, externalUserId);
 
         if (!secret) {
             logger.error("Failed to generate TOTP secret");

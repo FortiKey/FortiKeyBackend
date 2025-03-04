@@ -13,7 +13,7 @@ const logEvent = async (eventData, req = null) => {
       eventData.ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
       eventData.userAgent = req.headers['user-agent'] || 'unknown';
     }
-    
+
     await Usage.logEvent(eventData);
   } catch (error) {
     logger.error('Error logging event:', error.message);
@@ -21,47 +21,47 @@ const logEvent = async (eventData, req = null) => {
 };
 
 /**
- * Get general usage statistics for a business
+ * Get general usage statistics for a company
  */
-const getBusinessStats = async (req, res) => {
+const getCompanyStats = async (req, res) => {
   try {
     const { period } = req.query;
     const periodDays = parseInt(period) || 30; // Default to 30 days
-    
+
     if (!req.userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    
+
     // Get stats from service
-    const stats = await usageService.getBusinessStats(req.userId, periodDays);
+    const stats = await usageService.getCompanyStats(req.userId, periodDays);
     const summary = await usageService.getAuthenticationSummary(req.userId, periodDays);
-    
+
     // Log this analytics request
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: true,
-      details: { type: 'business_stats', period: periodDays }
+      details: { type: 'company_stats', period: periodDays }
     }, req);
-    
+
     return res.status(200).json({
       period: periodDays,
       summary,
       stats
     });
   } catch (error) {
-    logger.error('Error retrieving business stats:', error.message);
-    
+    logger.error('Error retrieving company stats:', error.message);
+
     // Log the error
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: false,
-      details: { type: 'business_stats', error: error.message }
+      details: { type: 'company_stats', error: error.message }
     }, req);
-    
+
     return res.status(500).json({
-      message: 'Error retrieving business statistics',
+      message: 'Error retrieving company statistics',
       error: error.message
     });
   }
@@ -74,23 +74,23 @@ const getTOTPStats = async (req, res) => {
   try {
     const { period } = req.query;
     const periodDays = parseInt(period) || 30; // Default to 30 days
-    
+
     if (!req.userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    
+
     // Get stats from service
     const stats = await usageService.getTOTPStats(req.userId, periodDays);
     const summary = usageService.calculateTOTPSummary(stats);
-    
+
     // Log this analytics request
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: true,
       details: { type: 'totp_stats', period: periodDays }
     }, req);
-    
+
     return res.status(200).json({
       period: periodDays,
       summary,
@@ -98,15 +98,15 @@ const getTOTPStats = async (req, res) => {
     });
   } catch (error) {
     logger.error('Error retrieving TOTP stats:', error.message);
-    
+
     // Log the error
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: false,
       details: { type: 'totp_stats', error: error.message }
     }, req);
-    
+
     return res.status(500).json({
       message: 'Error retrieving TOTP statistics',
       error: error.message
@@ -121,22 +121,22 @@ const getFailureAnalytics = async (req, res) => {
   try {
     const { period } = req.query;
     const periodDays = parseInt(period) || 30; // Default to 30 days
-    
+
     if (!req.userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    
+
     // Get failure stats from service
     const result = await usageService.getFailureStats(req.userId, periodDays);
-    
+
     // Log this analytics request
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: true,
       details: { type: 'failure_analytics', period: periodDays }
     }, req);
-    
+
     return res.status(200).json({
       period: periodDays,
       summary: {
@@ -148,15 +148,15 @@ const getFailureAnalytics = async (req, res) => {
     });
   } catch (error) {
     logger.error('Error retrieving failure analytics:', error.message);
-    
+
     // Log the error
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: false,
       details: { type: 'failure_analytics', error: error.message }
     }, req);
-    
+
     return res.status(500).json({
       message: 'Error retrieving failure analytics',
       error: error.message
@@ -172,31 +172,31 @@ const getUserTOTPStats = async (req, res) => {
     const { externalUserId } = req.params;
     const { period } = req.query;
     const periodDays = parseInt(period) || 30;
-    
+
     if (!req.userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    
+
     if (!externalUserId) {
       return res.status(400).json({ message: 'External user ID is required' });
     }
-    
+
     // Get user stats from service
     const stats = await usageService.getUserTOTPStats(externalUserId, periodDays);
-    
+
     if (!stats) {
       return res.status(500).json({ message: 'Error retrieving user TOTP statistics' });
     }
-    
+
     // Log the analytics access
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       externalUserId,
       eventType: 'analytics_access',
       success: true,
       details: { type: 'user_totp_stats', period: periodDays }
     }, req);
-    
+
     return res.status(200).json({
       externalUserId,
       period: periodDays,
@@ -204,16 +204,16 @@ const getUserTOTPStats = async (req, res) => {
     });
   } catch (error) {
     logger.error('Error retrieving user TOTP stats:', error.message);
-    
+
     // Log the error
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       externalUserId: req.params.externalUserId,
       eventType: 'analytics_access',
       success: false,
       details: { type: 'user_totp_stats', error: error.message }
     }, req);
-    
+
     return res.status(500).json({
       message: 'Error retrieving user TOTP statistics',
       error: error.message
@@ -228,22 +228,22 @@ const getSuspiciousActivity = async (req, res) => {
   try {
     const { period } = req.query;
     const periodDays = parseInt(period) || 30;
-    
+
     if (!req.userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    
+
     // Get suspicious activity data from service
     const suspiciousActivity = await usageService.getSuspiciousActivity(req.userId, periodDays);
-    
+
     // Log this analytics request
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: true,
       details: { type: 'suspicious_activity', period: periodDays }
     }, req);
-    
+
     return res.status(200).json({
       period: periodDays,
       suspiciousUsersCount: suspiciousActivity.suspiciousUsers.length,
@@ -252,15 +252,15 @@ const getSuspiciousActivity = async (req, res) => {
     });
   } catch (error) {
     logger.error('Error retrieving suspicious activity:', error.message);
-    
+
     // Log the error
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: false,
       details: { type: 'suspicious_activity', error: error.message }
     }, req);
-    
+
     return res.status(500).json({
       message: 'Error retrieving suspicious activity data',
       error: error.message
@@ -275,40 +275,40 @@ const getDeviceBreakdown = async (req, res) => {
   try {
     const { period } = req.query;
     const periodDays = parseInt(period) || 30;
-    
+
     if (!req.userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    
+
     // Get device breakdown from service
     const deviceBreakdown = await usageService.getDeviceBreakdown(req.userId, periodDays);
-    
+
     // Process into frontend-friendly format
     const processedData = usageService.processDeviceData(deviceBreakdown);
-    
+
     // Log this analytics request
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: true,
       details: { type: 'device_breakdown', period: periodDays }
     }, req);
-    
+
     return res.status(200).json({
       period: periodDays,
       ...processedData
     });
   } catch (error) {
     logger.error('Error retrieving device breakdown:', error.message);
-    
+
     // Log the error
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: false,
       details: { type: 'device_breakdown', error: error.message }
     }, req);
-    
+
     return res.status(500).json({
       message: 'Error retrieving device analytics',
       error: error.message
@@ -323,22 +323,22 @@ const getBackupCodeUsage = async (req, res) => {
   try {
     const { period } = req.query;
     const periodDays = parseInt(period) || 30;
-    
+
     if (!req.userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    
+
     // Get backup code usage data from service
     const backupCodeAnalytics = await usageService.getBackupCodeUsage(req.userId, periodDays);
-    
+
     // Log this analytics request
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: true,
       details: { type: 'backup_code_usage', period: periodDays }
     }, req);
-    
+
     return res.status(200).json({
       period: periodDays,
       backupCodeUsage: backupCodeAnalytics.backupCodeStats,
@@ -351,15 +351,15 @@ const getBackupCodeUsage = async (req, res) => {
     });
   } catch (error) {
     logger.error('Error retrieving backup code usage:', error.message);
-    
+
     // Log the error
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: false,
       details: { type: 'backup_code_usage', error: error.message }
     }, req);
-    
+
     return res.status(500).json({
       message: 'Error retrieving backup code analytics',
       error: error.message
@@ -374,22 +374,22 @@ const getTimeComparisons = async (req, res) => {
   try {
     const { period } = req.query;
     const periodDays = parseInt(period) || 7; // Default to 7 days for day-over-day
-    
+
     if (!req.userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    
+
     // Get time comparison data from service
     const timeComparisons = await usageService.getTimeComparisons(req.userId, periodDays);
-    
+
     // Log this analytics request
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: true,
       details: { type: 'time_comparisons', period: periodDays }
     }, req);
-    
+
     return res.status(200).json({
       period: periodDays,
       dayOverDay: timeComparisons.dayOverDayComparison,
@@ -397,15 +397,15 @@ const getTimeComparisons = async (req, res) => {
     });
   } catch (error) {
     logger.error('Error retrieving time comparisons:', error.message);
-    
+
     // Log the error
     logEvent({
-      businessId: req.userId,
+      companyId: req.userId,
       eventType: 'analytics_access',
       success: false,
       details: { type: 'time_comparisons', error: error.message }
     }, req);
-    
+
     return res.status(500).json({
       message: 'Error retrieving time comparison analytics',
       error: error.message
@@ -419,7 +419,7 @@ const getTimeComparisons = async (req, res) => {
 const logRateLimitExceeded = (req, res, next) => {
   // Log the rate limit event
   logEvent({
-    businessId: req.userId, // May be undefined for unauthenticated requests
+    companyId: req.userId, // May be undefined for unauthenticated requests
     eventType: 'rate_limit_exceeded',
     success: false,
     details: {
@@ -427,7 +427,7 @@ const logRateLimitExceeded = (req, res, next) => {
       method: req.method
     }
   }, req);
-  
+
   if (typeof next === 'function') {
     next();
   }
@@ -435,7 +435,7 @@ const logRateLimitExceeded = (req, res, next) => {
 
 module.exports = {
   logEvent,
-  getBusinessStats,
+  getCompanyStats,
   getTOTPStats,
   getFailureAnalytics,
   getUserTOTPStats,

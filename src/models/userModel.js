@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 
 // Define the schema for the user
 const UserSchema = new mongoose.Schema({
-    businessName: {
+    company: {
         type: String,
         required: true,
     },
