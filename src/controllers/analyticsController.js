@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const Usage = require('../models/usageModel');
 const usageService = require('../services/usageService');
 const { logger } = require('../middlewares/logger');
@@ -6,17 +5,31 @@ const { logger } = require('../middlewares/logger');
 /**
  * Utility function to log events
  */
-const logEvent = async (eventData, req = null) => {
+const logEvent = (eventData, req) => {
   try {
-    // Add IP and user agent if request object is provided
-    if (req) {
-      eventData.ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
-      eventData.userAgent = req.headers['user-agent'] || 'unknown';
+    // Ensure req is valid
+    if (!req || typeof req !== 'object') {
+      logger.warn('Invalid request object passed to logEvent');
+      return;
     }
 
-    await Usage.logEvent(eventData);
+    // Create event log data
+    const eventLog = {
+      companyId: eventData.companyId || req.userId,
+      eventType: eventData.eventType || 'unknown',
+      success: eventData.success !== undefined ? eventData.success : true,
+      details: eventData.details || {},
+      ipAddress: req.ip || req.connection?.remoteAddress || 'unknown',
+      userAgent: req.headers?.['user-agent'] || 'unknown',
+      timestamp: new Date()
+    };
+
+    // Just log to the console/logger without database storage
+    logger.info('Event logged', { event: eventLog });
+
   } catch (error) {
-    logger.error('Error logging event:', error.message);
+    // Don't let errors in event logging break the app
+    logger.error(`Error in logEvent: ${error.message}`);
   }
 };
 
