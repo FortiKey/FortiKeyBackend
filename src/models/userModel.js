@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 
 // Define the schema for the user
 const UserSchema = new mongoose.Schema({
-    businessName: {
+    company: {
         type: String,
         required: true,
     },
@@ -25,6 +25,11 @@ const UserSchema = new mongoose.Schema({
     password: {
         type: String,
         required: true,
+    },
+    role: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user',
     },
     apikey: {
         type: String,

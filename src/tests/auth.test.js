@@ -34,7 +34,7 @@ describe('Authentication API', () => {
             .send({
                 firstName: 'mary',
                 lastName: 'smith',
-                businessName: 'TestBusiness',
+                company: 'TestBusiness',
                 email: 'test@email.com',
                 password: 'password'
             });
@@ -53,7 +53,7 @@ describe('Authentication API', () => {
             .send({  // Send the request body
                 firstName: 'mary',
                 lastName: 'smith',
-                businessName: 'TestBusiness',
+                company: 'TestBusiness',
                 email: 'test@email.com',
                 password: 'password'
             });
@@ -116,7 +116,7 @@ describe('Authentication API', () => {
             .set('Authorization', `Bearer ${token}`);  // Set the Authorization header
         // Check the response
         expect(res.statusCode).toEqual(200); // Check the status code
-        expect(res.body).toHaveProperty('businessName');  // Check the response body
+        expect(res.body).toHaveProperty('company');  // Check the response body
         expect(res.body).toHaveProperty('email', 'test@email.com');  // Check the response body
         userId = res.body._id; // Set the userId variable
     });
@@ -128,11 +128,11 @@ describe('Authentication API', () => {
             .patch(`/api/v1/business/profile/${userId}`) // Send a request to update the user profile
             .set('Authorization', `Bearer ${token}`)  // Set the Authorization header
             .send({  // Send the request body
-                businessName: 'UpdatedBusinessName'
+                company: 'Updatedcompany'
             });
         // Check the response
         expect(res.statusCode).toEqual(200); // Check the status code
-        expect(res.body).toHaveProperty('businessName', 'UpdatedBusinessName');  // Check the response body
+        expect(res.body).toHaveProperty('company', 'Updatedcompany');  // Check the response body
     });
 
     // Test generating an API key

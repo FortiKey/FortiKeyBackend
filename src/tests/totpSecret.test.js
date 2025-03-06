@@ -23,7 +23,7 @@ app.use('/api/v1', v1Routes.router);
 let testUser;
 let testToken;
 let createdSecretId;
-const businessName = 'TestBusiness';
+const company = 'TestBusiness';
 const externalUserId = 'user123';
 const backupCodes = ['code1', 'code2'];
 
@@ -33,7 +33,7 @@ beforeAll(async () => {
 
     // Create a test user
     testUser = new User({
-        businessName: 'TOTP Test Business',
+        company: 'TOTP Test Business',
         firstName: 'Test',
         lastName: 'User',
         email: 'totptester@example.com',
@@ -48,7 +48,7 @@ beforeAll(async () => {
     const res = await request(app)
         .post('/api/v1/totp-secrets')
         .set('Authorization', `Bearer ${testToken}`)
-        .send({ businessName, externalUserId, backupCodes });
+        .send({ company, externalUserId, backupCodes });
 
     createdSecretId = res.body._id;
 });

@@ -27,7 +27,7 @@ const TOTPSecretSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
-        index: true,  
+        index: true,
     },
     createdAt: {
         type: Date,
@@ -57,7 +57,7 @@ TOTPSecretSchema.methods.decryptBackupCodes = function () {
 
 // Encrypt backup codes before saving
 const encrypt = (text) => {
-    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(process.env.ENCRYPTION_KEY), Buffer.from(process.env.ENCRYPTION_IV));
+    const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, ENCRYPTION_IV);
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     return encrypted;
@@ -65,7 +65,7 @@ const encrypt = (text) => {
 
 // Decrypt backup codes before returning
 const decrypt = (text) => {
-    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(process.env.ENCRYPTION_KEY), Buffer.from(process.env.ENCRYPTION_IV));
+    const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, ENCRYPTION_IV);
     let decrypted = decipher.update(text, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;

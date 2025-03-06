@@ -1,12 +1,13 @@
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 const { logger } = require('../middlewares/logger');
+const { logEvent } = require('../controllers/analyticsController');
 
 // Register a new user
 const register = async (req, res) => {
     try {
         // Extract the user details from the request body
-        const { businessName, firstName, lastName, email, password } = req.body;
+        const { company, firstName, lastName, email, password } = req.body;
 
         // Check if the email is already registered
         const existingUser = await User.findOne({ email });
@@ -15,7 +16,7 @@ const register = async (req, res) => {
         }
 
         // Create a new user document
-        const user = new User({ businessName, firstName, lastName, email, password });
+        const user = new User({ company, firstName, lastName, email, password });
         await user.save();
 
         // Generate a JWT token
@@ -35,13 +36,46 @@ const login = async (req, res) => {
         const user = await User.findOne({ email });
         // If the user is not found or the password is incorrect, return an error response
         if (!user || !(await user.comparePassword(password))) {
+            // Log the failed login
+        logEvent({
+            eventType: 'login',
+            success: false,
+            details: { 
+            email,
+            error: 'Invalid email or password' 
+            }
+        }, req);
             return res.status(401).json({ message: 'Invalid email or password' });
         }
         // Generate a JWT token
         const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
-        res.status(200).json({ token, userId: user._id });
+        // Log the successful login with the appropriate event type
+        logEvent({
+            companyId: user._id,
+            eventType: user.role === 'admin' ? 'admin_login' : 'login',
+            success: true,
+            details: { 
+            email,
+            company: user.company
+            }
+        }, req);
+        // Return token, userId, and role in the response
+        res.status(200).json({ 
+            token, 
+            userId: user._id,
+            role: user.role // Include the role in the response
+        });
     } catch (error) {
         logger.error("Error logging in user:", error.message);
+        // Log the failed login
+        logEvent({
+            eventType: 'login',
+            success: false,
+            details: { 
+            email: req.body.email,
+            error: error.message 
+            }
+        }, req);
         res.status(400).json({ message: error.message });
     }
 };
@@ -50,7 +84,7 @@ const login = async (req, res) => {
 const getProfile = async (req, res) => {
     try {
         // Get the user ID from the request
-        const user = await User.findById(req.userId).select('businessName firstName lastName email createdAt');
+        const user = await User.findById(req.userId).select('company firstName lastName email createdAt');
         // Return the user profile
         res.status(200).json(user);
     } catch (error) {

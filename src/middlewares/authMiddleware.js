@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { logger } = require('./logger');
+const User = require('../models/userModel');
 
 const authMiddleware = async (req, res, next) => {
     const authHeader = req.header('Authorization');
@@ -16,6 +17,7 @@ const authMiddleware = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.userId = decoded.userId;
+        const user = await User.findById(decoded.userId).select('role   ');
         next();
     } catch (error) {
         logger.error('Invalid token');

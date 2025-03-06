@@ -19,13 +19,14 @@ const {
     deleteAPIKey
 } = require('../controllers/authController');
 const { authMiddleware } = require('../middlewares/authMiddleware');
+const { adminMiddleware } = require('../middlewares/adminMiddleware');
 const { 
     apiLimiter,
     authLimiter, 
     totpLimiter 
 } = require('../middlewares/rateLimiter');
 const {
-    getBusinessStats,
+    getCompanyStats,
     getTOTPStats,
     getFailureAnalytics,
     getUserTOTPStats,
@@ -35,6 +36,10 @@ const {
     getTimeComparisons,
 } = require('../controllers/analyticsController');
 const { logRateLimitExceeded } = require('../middlewares/analyticsMiddleware');
+const { 
+    getAllCompanyUsers, 
+    getCompanyUserDetails 
+    } = require('../controllers/adminController');
 
 
 // Define a route for the health check
@@ -58,12 +63,16 @@ router.get('/business/profile/:userId', authMiddleware, apiLimiter, getProfile);
 router.patch('/business/profile/:userId', authMiddleware, apiLimiter, updateUser);  // Update user profile
 router.delete('/business/profile/:userId', authMiddleware, apiLimiter, deleteUser);  // Delete user profile
 
+// Admin routes
+router.get('/admin/business-users', authMiddleware, adminMiddleware, apiLimiter, getAllCompanyUsers);  // Get all business users
+router.get('/admin/business-users/:userId', authMiddleware, adminMiddleware, apiLimiter, getCompanyUserDetails);  // Get detailed info about a specific business user
+
 // API key routes
 router.post('/business/apikey', authMiddleware, apiLimiter, generateAPIKey);  // Generate an API key
 router.delete('/business/apikey', authMiddleware, apiLimiter, deleteAPIKey);  // Delete an API key
 
 // Analytics routes
-router.get('/analytics/business', authMiddleware, apiLimiter, getBusinessStats);  // Get business analytics
+router.get('/analytics/business', authMiddleware, apiLimiter, getCompanyStats);  // Get business analytics
 router.get('/analytics/totp', authMiddleware, apiLimiter, getTOTPStats);  // Get TOTP analytics
 router.get('/analytics/failures', authMiddleware, apiLimiter, getFailureAnalytics);  // Get failure analytics
 router.get('/analytics/users/:externalUserId/totp', authMiddleware, apiLimiter, getUserTOTPStats);  // Get user TOTP analytics

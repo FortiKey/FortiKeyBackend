@@ -1,4 +1,3 @@
-// services/usageService.js
 const mongoose = require('mongoose');
 const { Types } = mongoose;
 const { Usage } = require('../models/usageModel');
@@ -11,44 +10,43 @@ const { logger } = require('../middlewares/logger');
  */
 const toObjectId = (id) => {
   if (!id) return null;
-  
+
   if (id instanceof Types.ObjectId) {
     return id;
   }
-  
+
   try {
     return new Types.ObjectId(String(id));
   } catch (error) {
-    console.error('Invalid ID format:', id);
     return null;
   }
 };
 
 /**
- * Get business usage stats for a period
- * @param {string|ObjectId} businessId - The business ID
+ * Get company usage stats for a period
+ * @param {string|ObjectId} companyId - The company ID
  * @param {number} period - Period in days (default: 30)
- * @returns {Promise<Array>} - Business statistics
+ * @returns {Promise<Array>} - company statistics
  */
-const getBusinessStats = async (businessId, period = 30) => {
+const getCompanyStats = async (companyId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
-  
-  // Convert businessId to ObjectId
-  const businessIdObj = toObjectId(businessId);
-  if (!businessIdObj) return [];
-  
+
+  // Convert companyId to ObjectId
+  const companyIdObj = toObjectId(companyId);
+  if (!companyIdObj) return [];
+
   try {
     return await Usage.aggregate([
-      { 
-        $match: { 
-          businessId: businessIdObj,
+      {
+        $match: {
+          companyId: companyIdObj,
           timestamp: { $gte: startDate }
-        } 
+        }
       },
       {
         $group: {
-          _id: { 
+          _id: {
             eventType: "$eventType",
             success: "$success",
             day: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } }
@@ -72,51 +70,51 @@ const getBusinessStats = async (businessId, period = 30) => {
         }
       },
       {
-        $sort: { 
-          "_id.eventType": 1, 
-          "_id.success": -1 
+        $sort: {
+          "_id.eventType": 1,
+          "_id.success": -1
         }
       }
     ]);
   } catch (error) {
-    logger.error('Error getting business stats:', error.message);
+    logger.error('Error getting company stats:', error.message);
     return [];
   }
 };
 
 /**
  * Calculate authentication success/failure summary
- * @param {string|ObjectId} businessId - The business ID
+ * @param {string|ObjectId} companyId - The company ID
  * @param {number} period - Period in days
  * @returns {Promise<Object>} - Authentication summary
  */
-const getAuthenticationSummary = async (businessId, period = 30) => {
+const getAuthenticationSummary = async (companyId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
-  
-  // Convert businessId to ObjectId
-  const businessIdObj = toObjectId(businessId);
-  if (!businessIdObj) return { totalEvents: 0, successfulEvents: 0, failedEvents: 0, successRate: '0%' };
-  
+
+  // Convert companyId to ObjectId
+  const companyIdObj = toObjectId(companyId);
+  if (!companyIdObj) return { totalEvents: 0, successfulEvents: 0, failedEvents: 0, successRate: '0%' };
+
   try {
     const totalEvents = await Usage.countDocuments({
-      businessId: businessIdObj,
+      companyId: companyIdObj,
       timestamp: { $gte: startDate },
       eventType: { $in: ['totp_validation', 'backup_code_used'] }
     });
-    
+
     const successfulEvents = await Usage.countDocuments({
-      businessId: businessIdObj,
+      companyId: companyIdObj,
       timestamp: { $gte: startDate },
       eventType: { $in: ['totp_validation', 'backup_code_used'] },
       success: true
     });
-    
+
     const failedEvents = totalEvents - successfulEvents;
-    const successRate = totalEvents > 0 
-      ? (successfulEvents / totalEvents * 100).toFixed(2) 
+    const successRate = totalEvents > 0
+      ? (successfulEvents / totalEvents * 100).toFixed(2)
       : 100;
-    
+
     return {
       totalEvents,
       successfulEvents,
@@ -136,23 +134,23 @@ const getAuthenticationSummary = async (businessId, period = 30) => {
 
 /**
  * Get TOTP-specific statistics
- * @param {string|ObjectId} businessId - The business ID
+ * @param {string|ObjectId} companyId - The company ID
  * @param {number} period - Period in days
  * @returns {Promise<Array>} - TOTP statistics
  */
-const getTOTPStats = async (businessId, period = 30) => {
+const getTOTPStats = async (companyId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
-  
-  // Convert businessId to ObjectId
-  const businessIdObj = toObjectId(businessId);
-  if (!businessIdObj) return [];
-  
+
+  // Convert companyId to ObjectId
+  const companyIdObj = toObjectId(companyId);
+  if (!companyIdObj) return [];
+
   try {
     return await Usage.aggregate([
       {
         $match: {
-          businessId: businessIdObj,
+          companyId: companyIdObj,
           eventType: { $in: ['totp_setup', 'totp_validation', 'backup_code_used'] },
           timestamp: { $gte: startDate }
         }
@@ -186,13 +184,13 @@ const calculateTOTPSummary = (totpStats) => {
   const totpSetups = totpStats.filter(s => s._id.eventType === 'totp_setup');
   const totpValidations = totpStats.filter(s => s._id.eventType === 'totp_validation');
   const backupCodeUsage = totpStats.filter(s => s._id.eventType === 'backup_code_used');
-  
+
   const setupSuccess = totpSetups.filter(s => s._id.success).reduce((sum, item) => sum + item.count, 0);
   const setupTotal = totpSetups.reduce((sum, item) => sum + item.count, 0);
-  
+
   const validationSuccess = totpValidations.filter(s => s._id.success).reduce((sum, item) => sum + item.count, 0);
   const validationTotal = totpValidations.reduce((sum, item) => sum + item.count, 0);
-  
+
   return {
     setupSuccessRate: setupTotal ? (setupSuccess / setupTotal * 100).toFixed(2) + '%' : 'N/A',
     validationSuccessRate: validationTotal ? (validationSuccess / validationTotal * 100).toFixed(2) + '%' : 'N/A',
@@ -204,23 +202,23 @@ const calculateTOTPSummary = (totpStats) => {
 
 /**
  * Get failure statistics
- * @param {string|ObjectId} businessId - The business ID
+ * @param {string|ObjectId} companyId - The company ID
  * @param {number} period - Period in days
  * @returns {Promise<Object>} - Failure statistics
  */
-const getFailureStats = async (businessId, period = 30) => {
+const getFailureStats = async (companyId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
-  
-  // Convert businessId to ObjectId
-  const businessIdObj = toObjectId(businessId);
-  if (!businessIdObj) return { failures: [], totalEvents: 0, totalFailures: 0, failureRate: 0 };
-  
+
+  // Convert companyId to ObjectId
+  const companyIdObj = toObjectId(companyId);
+  if (!companyIdObj) return { failures: [], totalEvents: 0, totalFailures: 0, failureRate: 0 };
+
   try {
     const failures = await Usage.aggregate([
       {
         $match: {
-          businessId: businessIdObj,
+          companyId: companyIdObj,
           success: false,
           timestamp: { $gte: startDate }
         }
@@ -238,18 +236,18 @@ const getFailureStats = async (businessId, period = 30) => {
         $sort: { "_id.day": 1, "_id.eventType": 1 }
       }
     ]);
-    
+
     const totalEvents = await Usage.countDocuments({
-      businessId: businessIdObj,
+      companyId: companyIdObj,
       timestamp: { $gte: startDate }
     });
-    
+
     const totalFailures = await Usage.countDocuments({
-      businessId: businessIdObj,
+      companyId: companyIdObj,
       success: false,
       timestamp: { $gte: startDate }
     });
-    
+
     return {
       failures,
       totalEvents,
@@ -276,25 +274,25 @@ const getFailureStats = async (businessId, period = 30) => {
 const getUserTOTPStats = async (externalUserId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
-  
+
   try {
     // Get all TOTP validation attempts for this user
     const validationAttempts = await Usage.find({
       externalUserId: externalUserId,
       eventType: 'totp_validation',
       timestamp: { $gte: startDate }
-    });
-    
+    }).lean();
+
     // Count successful and failed attempts
     const successfulAttempts = validationAttempts.filter(attempt => attempt.success).length;
     const failedAttempts = validationAttempts.length - successfulAttempts;
-    
+
     // Calculate success rate
-    const successRate = validationAttempts.length > 0 
-      ? (successfulAttempts / validationAttempts.length * 100).toFixed(2)
-      : 0;
-    
-    // Get attempts by day for trend analysis
+    const successRate = validationAttempts.length > 0
+      ? ((successfulAttempts / validationAttempts.length) * 100).toFixed(2) + '%'
+      : '0%';
+
+    // Get attempts by day
     const attemptsByDay = await Usage.aggregate([
       {
         $match: {
@@ -312,16 +310,14 @@ const getUserTOTPStats = async (externalUserId, period = 30) => {
           count: { $sum: 1 }
         }
       },
-      {
-        $sort: { "_id.day": 1 }  // Sort by date ascending
-      }
+      { $sort: { "_id.day": 1 } }
     ]);
-    
+
     return {
       totalAttempts: validationAttempts.length,
       successfulAttempts,
       failedAttempts,
-      successRate: successRate + '%',
+      successRate,
       attemptsByDay
     };
   } catch (error) {
@@ -332,24 +328,24 @@ const getUserTOTPStats = async (externalUserId, period = 30) => {
 
 /**
  * Get suspicious activity data
- * @param {string|ObjectId} businessId - The business ID
+ * @param {string|ObjectId} companyId - The company ID
  * @param {number} period - Period in days
  * @returns {Promise<Object>} - Suspicious activity data
  */
-const getSuspiciousActivity = async (businessId, period = 30) => {
+const getSuspiciousActivity = async (companyId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
-  
-  // Convert businessId to ObjectId
-  const businessIdObj = toObjectId(businessId);
-  if (!businessIdObj) return { suspiciousUsers: [], suspiciousEvents: [] };
-  
+
+  // Convert companyId to ObjectId
+  const companyIdObj = toObjectId(companyId);
+  if (!companyIdObj) return { suspiciousUsers: [], suspiciousEvents: [] };
+
   try {
     // First, get typical patterns
     const typicalUserActivity = await Usage.aggregate([
       {
         $match: {
-          businessId: businessIdObj,
+          companyId: companyIdObj,
           timestamp: { $gte: startDate },
           eventType: { $in: ['totp_validation', 'backup_code_used'] }
         }
@@ -358,39 +354,39 @@ const getSuspiciousActivity = async (businessId, period = 30) => {
         $group: {
           _id: "$externalUserId",
           totalAttempts: { $sum: 1 },
-          failedAttempts: { 
+          failedAttempts: {
             $sum: { $cond: [{ $eq: ["$success", false] }, 1, 0] }
           },
           uniqueIPs: { $addToSet: "$ipAddress" }
         }
       }
     ]);
-    
+
     // Find users with suspicious patterns
     const suspiciousUsers = typicalUserActivity.filter(user => {
       // More than 5 failed attempts
       const highFailures = user.failedAttempts > 5;
-      
+
       // More than 3 different IP addresses (unusual for most users)
       const multipleIPs = user.uniqueIPs.length > 3;
-      
+
       // High failure rate (more than 40% failures)
-      const highFailureRate = user.totalAttempts > 0 && 
+      const highFailureRate = user.totalAttempts > 0 &&
         (user.failedAttempts / user.totalAttempts) > 0.4;
-        
+
       return highFailures || multipleIPs || highFailureRate;
     });
-    
+
     // Get detailed events for suspicious users
     const suspiciousUserIds = suspiciousUsers.map(user => user._id);
-    
+
     const suspiciousEvents = await Usage.find({
-      businessId: businessIdObj,
+      companyId: companyIdObj,
       externalUserId: { $in: suspiciousUserIds },
       timestamp: { $gte: startDate },
       eventType: { $in: ['totp_validation', 'backup_code_used'] }
     }).sort({ timestamp: -1 });
-    
+
     return {
       suspiciousUsers,
       suspiciousEvents
@@ -406,23 +402,23 @@ const getSuspiciousActivity = async (businessId, period = 30) => {
 
 /**
  * Get device breakdown based on user agents
- * @param {string|ObjectId} businessId - The business ID
+ * @param {string|ObjectId} companyId - The company ID
  * @param {number} period - Period in days
  * @returns {Promise<Array>} - Device breakdown
  */
-const getDeviceBreakdown = async (businessId, period = 30) => {
+const getDeviceBreakdown = async (companyId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
-  
-  // Convert businessId to ObjectId
-  const businessIdObj = toObjectId(businessId);
-  if (!businessIdObj) return [];
-  
+
+  // Convert companyId to ObjectId
+  const companyIdObj = toObjectId(companyId);
+  if (!companyIdObj) return [];
+
   try {
     return await Usage.aggregate([
       {
         $match: {
-          businessId: businessIdObj,
+          companyId: companyIdObj,
           timestamp: { $gte: startDate },
           userAgent: { $exists: true, $ne: null }
         }
@@ -455,19 +451,27 @@ const getDeviceBreakdown = async (businessId, period = 30) => {
           browser: {
             $cond: [
               { $regexMatch: { input: "$userAgent", regex: /Chrome/i } }, "Chrome",
-              { $cond: [
-                { $regexMatch: { input: "$userAgent", regex: /Firefox/i } }, "Firefox",
-                { $cond: [
-                  { $regexMatch: { input: "$userAgent", regex: /Safari/i } }, "Safari",
-                  { $cond: [
-                    { $regexMatch: { input: "$userAgent", regex: /Edge|Edg/i } }, "Edge",
-                    { $cond: [
-                      { $regexMatch: { input: "$userAgent", regex: /MSIE|Trident/i } }, "Internet Explorer",
-                      "Other"
-                    ]}
-                  ]}
-                ]}
-              ]}
+              {
+                $cond: [
+                  { $regexMatch: { input: "$userAgent", regex: /Firefox/i } }, "Firefox",
+                  {
+                    $cond: [
+                      { $regexMatch: { input: "$userAgent", regex: /Safari/i } }, "Safari",
+                      {
+                        $cond: [
+                          { $regexMatch: { input: "$userAgent", regex: /Edge|Edg/i } }, "Edge",
+                          {
+                            $cond: [
+                              { $regexMatch: { input: "$userAgent", regex: /MSIE|Trident/i } }, "Internet Explorer",
+                              "Other"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
             ]
           }
         }
@@ -479,7 +483,7 @@ const getDeviceBreakdown = async (businessId, period = 30) => {
             browser: "$browser"
           },
           count: { $sum: 1 },
-          successCount: { 
+          successCount: {
             $sum: { $cond: [{ $eq: ["$success", true] }, 1, 0] }
           },
           users: { $addToSet: "$externalUserId" }
@@ -503,21 +507,21 @@ const getDeviceBreakdown = async (businessId, period = 30) => {
 const processDeviceData = (deviceBreakdown) => {
   const deviceTypes = {};
   const browsers = {};
-  
+
   deviceBreakdown.forEach(item => {
     // Add to device types
     if (!deviceTypes[item._id.deviceType]) {
       deviceTypes[item._id.deviceType] = 0;
     }
     deviceTypes[item._id.deviceType] += item.count;
-    
+
     // Add to browsers
     if (!browsers[item._id.browser]) {
       browsers[item._id.browser] = 0;
     }
     browsers[item._id.browser] += item.count;
   });
-  
+
   return {
     deviceTypes,
     browsers,
@@ -527,30 +531,30 @@ const processDeviceData = (deviceBreakdown) => {
 
 /**
  * Get backup code usage statistics
- * @param {string|ObjectId} businessId - The business ID
+ * @param {string|ObjectId} companyId - The company ID
  * @param {number} period - Period in days
  * @returns {Promise<Object>} - Backup code usage data
  */
-const getBackupCodeUsage = async (businessId, period = 30) => {
+const getBackupCodeUsage = async (companyId, period = 30) => {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
-  
-  // Convert businessId to ObjectId
-  const businessIdObj = toObjectId(businessId);
-  if (!businessIdObj) return {
+
+  // Convert companyId to ObjectId
+  const companyIdObj = toObjectId(companyId);
+  if (!companyIdObj) return {
     backupCodeStats: [],
     totpCount: 0,
     backupCount: 0,
     backupToTotpRatio: '0%',
     frequentBackupUsers: []
   };
-  
+
   try {
     // Get backup code usage stats
     const backupCodeStats = await Usage.aggregate([
       {
         $match: {
-          businessId: businessIdObj,
+          companyId: companyIdObj,
           eventType: 'backup_code_used',
           timestamp: { $gte: startDate }
         }
@@ -569,25 +573,25 @@ const getBackupCodeUsage = async (businessId, period = 30) => {
         $sort: { "_id.day": 1 }
       }
     ]);
-    
+
     // Calculate comparison with TOTP usage
     const totpCount = await Usage.countDocuments({
-      businessId: businessIdObj,
+      companyId: companyIdObj,
       eventType: 'totp_validation',
       timestamp: { $gte: startDate }
     });
-    
+
     const backupCount = await Usage.countDocuments({
-      businessId: businessIdObj,
+      companyId: companyIdObj,
       eventType: 'backup_code_used',
       timestamp: { $gte: startDate }
     });
-    
+
     // Get users who frequently use backup codes
     const frequentBackupUsers = await Usage.aggregate([
       {
         $match: {
-          businessId: businessIdObj,
+          companyId: companyIdObj,
           eventType: 'backup_code_used',
           timestamp: { $gte: startDate }
         }
@@ -610,7 +614,7 @@ const getBackupCodeUsage = async (businessId, period = 30) => {
         $limit: 10 // Top 10 users
       }
     ]);
-    
+
     return {
       backupCodeStats,
       totpCount,
@@ -632,32 +636,32 @@ const getBackupCodeUsage = async (businessId, period = 30) => {
 
 /**
  * Get time-based comparisons
- * @param {string|ObjectId} businessId - The business ID
+ * @param {string|ObjectId} companyId - The company ID
  * @param {number} period - Period in days
  * @returns {Promise<Object>} - Time comparison data
  */
-const getTimeComparisons = async (businessId, period = 7) => {
+const getTimeComparisons = async (companyId, period = 7) => {
   const endDate = new Date();
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - period);
-  
-  // Convert businessId to ObjectId
-  const businessIdObj = toObjectId(businessId);
-  if (!businessIdObj) return {
+
+  // Convert companyId to ObjectId
+  const companyIdObj = toObjectId(companyId);
+  if (!companyIdObj) return {
     dayOverDayComparison: [],
-    businessHoursSummary: {
-      businessHoursCount: 0,
+    companyHoursSummary: {
+      companyHoursCount: 0,
       offHoursCount: 0,
-      businessHoursPercentage: '0%'
+      companyHoursPercentage: '0%'
     }
   };
-  
+
   try {
     // Get hourly breakdown of authentication attempts
     const hourlyBreakdown = await Usage.aggregate([
       {
         $match: {
-          businessId: businessIdObj,
+          companyId: companyIdObj,
           eventType: { $in: ['totp_validation', 'backup_code_used'] },
           timestamp: { $gte: startDate }
         }
@@ -684,17 +688,17 @@ const getTimeComparisons = async (businessId, period = 7) => {
         $sort: { "_id.date": 1, "_id.hour": 1 }
       }
     ]);
-    
+
     // Process the raw data
     return processTimeComparisonData(hourlyBreakdown);
   } catch (error) {
     logger.error('Error getting time comparisons:', error.message);
     return {
       dayOverDayComparison: [],
-      businessHoursSummary: {
-        businessHoursCount: 0,
+      companyHoursSummary: {
+        companyHoursCount: 0,
         offHoursCount: 0,
-        businessHoursPercentage: '0%'
+        companyHoursPercentage: '0%'
       }
     };
   }
@@ -713,37 +717,37 @@ const processTimeComparisonData = (hourlyBreakdown) => {
       dayData[item._id.date] = {
         totalCount: 0,
         hourly: Array(24).fill(0),
-        businessHours: 0,
+        companyHours: 0,
         offHours: 0
       };
     }
-    
+
     dayData[item._id.date].totalCount += item.count;
     dayData[item._id.date].hourly[item._id.hour] = item.count;
-    
-    // Define business hours as 9am-5pm (hours 9-17)
+
+    // Define company hours as 9am-5pm (hours 9-17)
     if (item._id.hour >= 9 && item._id.hour < 17) {
-      dayData[item._id.date].businessHours += item.count;
+      dayData[item._id.date].companyHours += item.count;
     } else {
       dayData[item._id.date].offHours += item.count;
     }
   });
-  
+
   // Calculate day-over-day changes
   const days = Object.keys(dayData).sort();
   const dayOverDayComparison = [];
-  
+
   for (let i = 1; i < days.length; i++) {
     const currentDay = days[i];
-    const previousDay = days[i-1];
-    
+    const previousDay = days[i - 1];
+
     const currentTotal = dayData[currentDay].totalCount;
     const previousTotal = dayData[previousDay].totalCount;
-    
-    const percentChange = previousTotal > 0 
-      ? ((currentTotal - previousTotal) / previousTotal * 100).toFixed(2) 
+
+    const percentChange = previousTotal > 0
+      ? ((currentTotal - previousTotal) / previousTotal * 100).toFixed(2)
       : 'N/A';
-    
+
     dayOverDayComparison.push({
       date: currentDay,
       totalCount: currentTotal,
@@ -752,23 +756,23 @@ const processTimeComparisonData = (hourlyBreakdown) => {
       hourlyBreakdown: dayData[currentDay].hourly
     });
   }
-  
-  // Business hours vs. off-hours summary
-  let totalBusinessHours = 0;
+
+  // company hours vs. off-hours summary
+  let totalcompanyHours = 0;
   let totalOffHours = 0;
-  
+
   Object.values(dayData).forEach(day => {
-    totalBusinessHours += day.businessHours;
+    totalcompanyHours += day.companyHours;
     totalOffHours += day.offHours;
   });
-  
+
   return {
     dayOverDayComparison,
-    businessHoursSummary: {
-      businessHoursCount: totalBusinessHours,
+    companyHoursSummary: {
+      companyHoursCount: totalcompanyHours,
       offHoursCount: totalOffHours,
-      businessHoursPercentage: (totalBusinessHours + totalOffHours > 0) 
-        ? (totalBusinessHours / (totalBusinessHours + totalOffHours) * 100).toFixed(2) + '%'
+      companyHoursPercentage: (totalcompanyHours + totalOffHours > 0)
+        ? (totalcompanyHours / (totalcompanyHours + totalOffHours) * 100).toFixed(2) + '%'
         : '0%'
     }
   };
@@ -776,7 +780,7 @@ const processTimeComparisonData = (hourlyBreakdown) => {
 
 // Export all functions
 module.exports = {
-  getBusinessStats,
+  getCompanyStats,
   getAuthenticationSummary,
   getTOTPStats,
   calculateTOTPSummary,
