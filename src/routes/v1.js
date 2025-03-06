@@ -19,6 +19,7 @@ const {
     deleteAPIKey
 } = require('../controllers/authController');
 const { authMiddleware } = require('../middlewares/authMiddleware');
+const { adminMiddleware } = require('../middlewares/adminMiddleware');
 const { 
     apiLimiter,
     authLimiter, 
@@ -35,6 +36,10 @@ const {
     getTimeComparisons,
 } = require('../controllers/analyticsController');
 const { logRateLimitExceeded } = require('../middlewares/analyticsMiddleware');
+const { 
+    getAllCompanyUsers, 
+    getCompanyUserDetails 
+    } = require('../controllers/adminController');
 
 
 // Define a route for the health check
@@ -57,6 +62,10 @@ router.post('/business/login', authLimiter, login);  // Login an existing user
 router.get('/business/profile/:userId', authMiddleware, apiLimiter, getProfile);  // Get user profile
 router.patch('/business/profile/:userId', authMiddleware, apiLimiter, updateUser);  // Update user profile
 router.delete('/business/profile/:userId', authMiddleware, apiLimiter, deleteUser);  // Delete user profile
+
+// Admin routes
+router.get('/admin/business-users', authMiddleware, adminMiddleware, apiLimiter, getAllCompanyUsers);  // Get all business users
+router.get('/admin/business-users/:userId', authMiddleware, adminMiddleware, apiLimiter, getCompanyUserDetails);  // Get detailed info about a specific business user
 
 // API key routes
 router.post('/business/apikey', authMiddleware, apiLimiter, generateAPIKey);  // Generate an API key
