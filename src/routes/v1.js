@@ -16,7 +16,8 @@ const {
     updateUser,
     deleteUser,
     generateAPIKey,
-    deleteAPIKey
+    deleteAPIKey,
+    updatePassword
 } = require('../controllers/authController');
 const { authMiddleware } = require('../middlewares/authMiddleware');
 const { adminMiddleware } = require('../middlewares/adminMiddleware');
@@ -61,6 +62,7 @@ router.post('/business/register', authLimiter, register);  // Register a new use
 router.post('/business/login', authLimiter, login);  // Login an existing user
 router.get('/business/profile/:userId', authMiddleware, apiLimiter, getProfile);  // Get user profile
 router.patch('/business/profile/:userId', authMiddleware, apiLimiter, updateUser);  // Update user profile
+router.patch('/business/profile/:userId/password', authMiddleware, apiLimiter, updatePassword);  // Update user password
 router.delete('/business/profile/:userId', authMiddleware, apiLimiter, deleteUser);  // Delete user profile
 
 // Admin routes

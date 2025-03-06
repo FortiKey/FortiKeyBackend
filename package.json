@@ -17,7 +17,9 @@
   "scripts": {
     "test": "jest",
     "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "dev": "nodemon src/index.js",
+    "seed-Admin": "node src/scripts/createAdmin.js",
+    "seed-test-User": "node src/scripts/testUser.js"
   },
   "dependencies": {
     "axios": "^1.7.9",
