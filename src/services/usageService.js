@@ -36,6 +36,12 @@ const getCompanyStats = async (companyId, period = 30) => {
   const companyIdObj = toObjectId(companyId);
   if (!companyIdObj) return [];
 
+  // Add count logging here
+  const count = await Usage.countDocuments({
+    companyId: companyIdObj,
+    timestamp: { $gte: startDate }
+  });
+
   try {
     return await Usage.aggregate([
       {
@@ -146,6 +152,13 @@ const getTOTPStats = async (companyId, period = 30) => {
   const companyIdObj = toObjectId(companyId);
   if (!companyIdObj) return [];
 
+  // Add count logging here
+  const count = await Usage.countDocuments({
+    companyId: companyIdObj,
+    eventType: { $in: ['totp_setup', 'totp_validation', 'backup_code_used'] },
+    timestamp: { $gte: startDate }
+  });
+
   try {
     return await Usage.aggregate([
       {
@@ -213,6 +226,12 @@ const getFailureStats = async (companyId, period = 30) => {
   // Convert companyId to ObjectId
   const companyIdObj = toObjectId(companyId);
   if (!companyIdObj) return { failures: [], totalEvents: 0, totalFailures: 0, failureRate: 0 };
+
+  // Add count logging here
+  const count = await Usage.countDocuments({
+    companyId: companyIdObj,
+    timestamp: { $gte: startDate }
+  });
 
   try {
     const failures = await Usage.aggregate([
@@ -321,7 +340,6 @@ const getUserTOTPStats = async (externalUserId, period = 30) => {
       attemptsByDay
     };
   } catch (error) {
-    logger.error('Error getting user TOTP stats:', error.message);
     return null;
   }
 };
@@ -392,7 +410,6 @@ const getSuspiciousActivity = async (companyId, period = 30) => {
       suspiciousEvents
     };
   } catch (error) {
-    logger.error('Error getting suspicious activity:', error.message);
     return {
       suspiciousUsers: [],
       suspiciousEvents: []
@@ -413,6 +430,13 @@ const getDeviceBreakdown = async (companyId, period = 30) => {
   // Convert companyId to ObjectId
   const companyIdObj = toObjectId(companyId);
   if (!companyIdObj) return [];
+
+  // Add count logging here
+  const count = await Usage.countDocuments({
+    companyId: companyIdObj,
+    timestamp: { $gte: startDate },
+    userAgent: { $exists: true, $ne: null }
+  });
 
   try {
     return await Usage.aggregate([
