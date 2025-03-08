@@ -72,7 +72,7 @@ async function seedTestData() {
     const testUser = await createTestUser();
     logger.info(`Created test user: ${testUser.email} with ID: ${testUser._id}`);
 
-    // Create test TOTP users
+    // Create test TOTP users with improved data for ViewAccounts page
     const testTOTPUsers = await createTestTOTPUsers(testUser._id, 50);
     logger.info(`Created ${testTOTPUsers.length} test TOTP users`);
 
@@ -114,47 +114,122 @@ async function clearExistingTestData() {
  */
 async function createTestUser() {
   const testUser = new User({
-    company: 'Test Company',
-    firstName: 'Test',
+    company: 'FortiKey Security',
+    firstName: 'Admin',
     lastName: 'User',
     email: 'test@test.com',
     password: 'password123', // Set plain text password
-    role: 'user',
+    role: 'admin', // Set as admin to access all users
     apikey: require('crypto').randomBytes(32).toString('hex')
   });
 
   const savedUser = await testUser.save();
-  console.log('Created test user:', savedUser);
+  console.log('Created test admin user:', savedUser);
 
   return savedUser;
 }
 
 /**
- * Create test TOTP users
+ * Create test TOTP users with improved data for ViewAccounts
  * @param {mongoose.Types.ObjectId} companyId - ID of the company/user
  * @param {number} count - Number of TOTP users to create
  */
 async function createTestTOTPUsers(companyId, count) {
   const users = [];
+  
+  // Define company domains for distributing users across companies
+  const companies = [
+    { name: 'FortiKey Security', domains: ['fortikey.com', 'fortikey.io'] },
+    { name: 'Acme Corp', domains: ['acme.com', 'acmecorp.org'] },
+    { name: 'Tech Innovations', domains: ['techinnovations.io', 'tech-innovations.com'] },
+    { name: 'Global Finance', domains: ['globalfinance.com', 'gfin.org'] },
+    { name: 'Healthcare Systems', domains: ['healthsys.org', 'healthcare-systems.com'] }
+  ];
 
+  // First names for generating realistic user identities
+  const firstNames = [
+    'James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 
+    'William', 'Elizabeth', 'David', 'Susan', 'Richard', 'Jessica', 'Joseph', 'Sarah',
+    'Thomas', 'Karen', 'Charles', 'Nancy', 'Daniel', 'Lisa', 'Matthew', 'Margaret',
+    'Anthony', 'Betty', 'Mark', 'Sandra', 'Donald', 'Ashley', 'Steven', 'Dorothy',
+    'Andrew', 'Kimberly', 'Paul', 'Emily', 'Joshua', 'Donna', 'Kenneth', 'Michelle'
+  ];
+  
+  // Last names for generating realistic user identities
+  const lastNames = [
+    'Smith', 'Johnson', 'Williams', 'Jones', 'Brown', 'Davis', 'Miller', 'Wilson',
+    'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson', 'White', 'Harris', 'Martin',
+    'Thompson', 'Garcia', 'Martinez', 'Robinson', 'Clark', 'Rodriguez', 'Lewis', 'Lee',
+    'Walker', 'Hall', 'Allen', 'Young', 'Hernandez', 'King', 'Wright', 'Lopez',
+    'Hill', 'Scott', 'Green', 'Adams', 'Baker', 'Gonzalez', 'Nelson', 'Carter'
+  ];
+
+  // Create users across different companies with realistic names
   for (let i = 0; i < count; i++) {
-    const externalUserId = `test-user-${i + 1}`;
-    const { secret } = generateTOTPSecret('Test Company', externalUserId);
+    // Select company 
+    const company = companies[i % companies.length];
+    const domain = company.domains[Math.floor(Math.random() * company.domains.length)];
+    
+    // Generate random name
+    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    
+    // Create email/username in different formats for realism
+    let emailFormat = Math.floor(Math.random() * 3);
+    let email;
+    
+    switch(emailFormat) {
+      case 0:
+        email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
+        break;
+      case 1:
+        email = `${firstName.toLowerCase()[0]}${lastName.toLowerCase()}@${domain}`;
+        break;
+      case 2:
+        email = `${lastName.toLowerCase()}.${firstName.toLowerCase()}@${domain}`;
+        break;
+    }
+    
+    // For the externalUserId, use the email so it's clearly identifiable
+    const externalUserId = email;
+    
+    // Generate TOTP secret
+    const { secret } = generateTOTPSecret(company.name, externalUserId);
 
     // Generate backup codes
     const backupCodes = Array.from({ length: 8 }, () =>
       Math.random().toString(36).substring(2, 8).toUpperCase()
     );
 
+    // Record creation date with some variation
+    const createdAt = new Date();
+    // Offset by up to 60 days in the past
+    createdAt.setDate(createdAt.getDate() - Math.floor(Math.random() * 60));
+
+    // Add metadata for ViewAccounts display
+    const metadata = {
+      name: `${firstName} ${lastName}`,
+      company: company.name,
+      validated: Math.random() > 0.1, // 90% are validated
+    };
+
     const totpSecret = new TOTPSecret({
       secret,
       backupCodes,
       externalUserId,
-      companyId
+      companyId,
+      createdAt,
+      metadata // Save additional metadata
     });
 
-    await totpSecret.save();
-    users.push({ externalUserId, _id: totpSecret._id });
+    const savedSecret = await totpSecret.save();
+    users.push({ 
+      externalUserId, 
+      _id: savedSecret._id,
+      company: company.name,
+      name: `${firstName} ${lastName}`,
+      validated: metadata.validated
+    });
   }
 
   return users;
@@ -214,6 +289,89 @@ async function generateAnalyticsData(companyId, testTOTPUsers) {
     await Usage.insertMany(usageEvents);
     logger.info(`Inserted ${usageEvents.length} usage events`);
   }
+}
+
+// [Rest of the helper functions remain the same]
+// ... Keep all the existing helper functions from the original file ...
+
+/**
+ * Generate a consistent activity pattern
+ * @param {Date} startDate - Start date
+ * @param {Date} endDate - End date
+ * @returns {Object} Activity pattern by date
+ */
+function generateActivityPattern(startDate, endDate) {
+  const days = getDaysBetweenDates(startDate, endDate);
+  const activityPattern = {};
+
+  // Base multipliers for weekdays and weekends
+  const weekdayBase = 1.0;  // Monday-Friday
+  const weekendBase = 0.4;  // Saturday-Sunday
+
+  // Create a weekly trend with gradual increase from Monday to Thursday
+  // and decrease on Friday, with low activity on weekends
+  const dayOfWeekMultipliers = [
+    0.4,  // Sunday: 40% of base
+    0.9,  // Monday: 90% of base  
+    1.0,  // Tuesday: 100% of base
+    1.2,  // Wednesday: 120% of base (mid-week peak)
+    1.1,  // Thursday: 110% of base
+    0.8,  // Friday: 80% of base
+    0.3   // Saturday: 30% of base
+  ];
+
+  // Create a monthly trend (higher activity in the middle of the month)
+  const getMonthlyMultiplier = (date) => {
+    const dayOfMonth = date.getDate();
+    const monthLength = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+
+    // Calculate distance from middle of month (normalized to 0-1)
+    const normalizedDistance = Math.abs((dayOfMonth - (monthLength / 2)) / (monthLength / 2));
+
+    // Middle of month has higher activity (up to 20% boost)
+    return 1 - (normalizedDistance * 0.2);
+  };
+
+  // Create a long-term trend (gradually increasing activity over time)
+  const getLongTermTrend = (date, startDate, endDate) => {
+    const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+    const dayIndex = (date - startDate) / (1000 * 60 * 60 * 24);
+
+    // 15% increase from start to end
+    return 0.9 + (dayIndex / totalDays) * 0.15;
+  };
+
+  // Generate consistent noise (same seed for same day)
+  const getConsistentNoise = (date) => {
+    // Use date as seed
+    const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+
+    // Simple deterministic pseudo-random number generator
+    const x = Math.sin(seed) * 10000;
+    const noise = x - Math.floor(x);
+
+    // Range of -10% to +10%
+    return 0.9 + (noise * 0.2);
+  };
+
+  // Apply all factors to create the activity pattern
+  days.forEach(day => {
+    const dayOfWeek = day.getDay();
+    const baseActivity = (dayOfWeek === 0 || dayOfWeek === 6) ? weekendBase : weekdayBase;
+    const dowMultiplier = dayOfWeekMultipliers[dayOfWeek];
+    const monthMultiplier = getMonthlyMultiplier(day);
+    const trendMultiplier = getLongTermTrend(day, startDate, endDate);
+    const noiseMultiplier = getConsistentNoise(day);
+
+    // Combine all factors
+    const dayActivity = baseActivity * dowMultiplier * monthMultiplier * trendMultiplier * noiseMultiplier;
+
+    // Store the activity level
+    const dateStr = day.toISOString().split('T')[0];
+    activityPattern[dateStr] = Math.max(0.1, dayActivity); // Ensure minimum activity
+  });
+
+  return activityPattern;
 }
 
 /**
@@ -1054,9 +1212,7 @@ async function generateRateLimitEvents(companyId, startDate, endDate, usageEvent
   }
 }
 
-/**
- * ENHANCED HELPER FUNCTIONS
- */
+
 
 /**
  * Get a time during business hours on a specific day

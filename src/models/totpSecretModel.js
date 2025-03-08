@@ -29,10 +29,22 @@ const TOTPSecretSchema = new mongoose.Schema({
         unique: true,
         index: true,
     },
+    companyId: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false,
+        index: true,
+    },
     createdAt: {
         type: Date,
         default: Date.now,
     },
+    // Add metadata field for additional info
+    metadata: {
+        type: Object,
+        required: false,
+        default: {}
+    }
 });
 
 // Encrypt secret before saving
