@@ -192,29 +192,73 @@ const deleteUser = async (req, res) => {
     }
 };
 
+// Get current API key
+const getCurrentAPIKey = async (req, res) => {
+    try {
+      // Get the user ID from the request
+      if (!req.userId) {
+        logger.error('Unauthorised: No user ID provided');
+        return res.status(401).json({ message: 'Unauthorised: No user ID provided' });
+      }
+      
+      // Find the user by ID
+      const user = await User.findById(req.userId);
+      if (!user) {
+        logger.error('User not found');
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Return the API key (or null if none exists)
+      res.status(200).json({ 
+        apiKey: user.apikey || null 
+      });
+    } catch (error) {
+      logger.error("Error retrieving API key:", error.message);
+      res.status(500).json({ message: error.message });
+    }
+  };
+
+
 // Generate API key
 const generateAPIKey = async (req, res) => {
     try {
-        // Get the user ID from the request
-        if (!req.userId) {
-            logger.error('Unauthorised: No user ID provided');
-            return res.status(401).json({ message: 'Unauthorised: No user ID provided' });
-        }
-        // Find the user by ID
-        const user = await User.findById(req.userId);
-        if (!user) {
-            logger.error('User not found');
-            return res.status(404).json({ message: 'User not found' });
-        }
-        // Generate a new API key
-        user.apikey = require('crypto').randomBytes(32).toString('hex');
-        await user.save();
-        res.status(201).json({ apiKey: user.apikey });
+      // Get the user ID from the request
+      if (!req.userId) {
+        logger.error('Unauthorised: No user ID provided');
+        return res.status(401).json({ message: 'Unauthorised: No user ID provided' });
+      }
+      
+      // Find the user by ID
+      const user = await User.findById(req.userId);
+      if (!user) {
+        logger.error('User not found');
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      // Log the previous key (masked) for debugging
+      const previousKey = user.apikey ? 
+        `${user.apikey.substring(0, 5)}...${user.apikey.substring(user.apikey.length - 5)}` : 
+        'none';
+      
+      logger.info(`Generating new API key for user ${req.userId}. Previous key: ${previousKey}`);
+      
+      // Generate a new API key
+      user.apikey = require('crypto').randomBytes(32).toString('hex');
+      
+      // Log the new key (masked) for debugging
+      const newKeyMasked = `${user.apikey.substring(0, 5)}...${user.apikey.substring(user.apikey.length - 5)}`;
+      logger.info(`Generated new API key for user ${req.userId}: ${newKeyMasked}`);
+      
+      // Save the user with the new API key
+      await user.save();
+      
+      // Return the new API key
+      res.status(201).json({ apiKey: user.apikey });
     } catch (error) {
-        logger.error("Error generating API key:", error.message);
-        res.status(400).json({ message: error.message });
+      logger.error("Error generating API key:", error.message);
+      res.status(500).json({ message: error.message });
     }
-};
+  };
 
 // Delete API key
 const deleteAPIKey = async (req, res) => {
@@ -252,6 +296,7 @@ module.exports = {
     updatePassword,
     updateUser,
     deleteUser,
+    getCurrentAPIKey,
     generateAPIKey,
     deleteAPIKey
 };

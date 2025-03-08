@@ -15,11 +15,15 @@ const {
     getProfile,
     updateUser,
     deleteUser,
+    getCurrentAPIKey,
     generateAPIKey,
     deleteAPIKey,
     updatePassword
 } = require('../controllers/authController');
-const { authMiddleware } = require('../middlewares/authMiddleware');
+const { 
+    authMiddleware,
+    apiKeyMiddleware
+ } = require('../middlewares/authMiddleware');
 const { adminMiddleware } = require('../middlewares/adminMiddleware');
 const { 
     apiLimiter,
@@ -49,13 +53,13 @@ router.get('/health', (req, res) => {  // Define a route for the health check
 });
 
 // TOTP secret routes
-router.post('/totp-secrets', apiLimiter, createTOTPSecret);  // Create a new TOTP secret
+router.post('/totp-secrets',apiKeyMiddleware, apiLimiter, createTOTPSecret);  // Create a new TOTP secret
 router.get('/totp-secrets', authMiddleware, apiLimiter, getAllTOTPSecrets);  // Get all TOTP secrets
-router.get('/totp-secrets/user/:externalUserId', authMiddleware, apiLimiter, getTOTPSecretByExternalUserId);  // Get a TOTP secret by external user ID
-router.get('/totp-secrets/:id', authMiddleware, apiLimiter, getTOTPSecretById);  // Get a TOTP secret by MongoDB document ID
-router.patch('/totp-secrets/:id', authMiddleware, apiLimiter, updateTOTPSecret);  // Update a TOTP secret by MongoDB document ID
-router.delete('/totp-secrets/:id', authMiddleware, apiLimiter, deleteTOTPSecret);  // Delete a TOTP secret by MongoDB document ID
-router.post('/totp-secrets/validate',totpLimiter, validateTOTP);  // Validate a TOTP token
+router.get('/totp-secrets/user/:externalUserId', apiKeyMiddleware, apiLimiter, getTOTPSecretByExternalUserId);  // Get a TOTP secret by external user ID
+router.get('/totp-secrets/:id', apiKeyMiddleware, apiLimiter, getTOTPSecretById);  // Get a TOTP secret by MongoDB document ID
+router.patch('/totp-secrets/:id', apiKeyMiddleware, apiLimiter, updateTOTPSecret);  // Update a TOTP secret by MongoDB document ID
+router.delete('/totp-secrets/:id', apiKeyMiddleware, apiLimiter, deleteTOTPSecret);  // Delete a TOTP secret by MongoDB document ID
+router.post('/totp-secrets/validate',apiKeyMiddleware, totpLimiter, validateTOTP);  // Validate a TOTP token
 
 // Auth routes
 router.post('/business/register', authLimiter, register);  // Register a new user
@@ -70,6 +74,7 @@ router.get('/admin/business-users', authMiddleware, adminMiddleware, apiLimiter,
 router.get('/admin/business-users/:userId', authMiddleware, adminMiddleware, apiLimiter, getCompanyUserDetails);  // Get detailed info about a specific business user
 
 // API key routes
+router.get('/business/apikey', authMiddleware, apiLimiter, getCurrentAPIKey);  // Get the user's API key
 router.post('/business/apikey', authMiddleware, apiLimiter, generateAPIKey);  // Generate an API key
 router.delete('/business/apikey', authMiddleware, apiLimiter, deleteAPIKey);  // Delete an API key
 

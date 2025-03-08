@@ -1,6 +1,7 @@
 const TOTPSecret = require('../models/totpSecretModel');  // Import the TOTPSecret model
 const { generateTOTPSecret, validateTOTPToken } = require('../utils/totpGeneration');  // Import the TOTP functions
 const { logger } = require('../middlewares/logger');  // Import the logger
+const User = require('../models/userModel');  // Import the User model
 
 // Create a new TOTP secret
 const createTOTPSecret = async (req, res) => {
@@ -20,11 +21,25 @@ const createTOTPSecret = async (req, res) => {
             return res.status(500).json({ message: 'Failed to generate TOTP secret' });
         }
 
+        // Get the authenticated user ID
+        const userId = req.userId;
+        
+        // Get the user to retrieve their company name
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
         // Create and save the TOTP secret document
         const newTOTPSecret = new TOTPSecret({
             secret,
             backupCodes,
             externalUserId,
+            companyId: userId, // Set the creator's user ID
+            metadata: {
+                company: user.company, // Store company name in metadata
+                createdBy: `${user.firstName} ${user.lastName}`
+            }
         });
 
         // Save the TOTP secret
@@ -36,6 +51,8 @@ const createTOTPSecret = async (req, res) => {
             secret: savedSecret.decryptSecret(),
             backupCodes: savedSecret.decryptBackupCodes(), 
             uri,
+            companyId: savedSecret.companyId,
+            metadata: savedSecret.metadata
         });
 
     } catch (error) {
@@ -47,13 +64,40 @@ const createTOTPSecret = async (req, res) => {
 // Get all TOTP secrets
 const getAllTOTPSecrets = async (req, res) => {
     try {
-        // Find all TOTP secrets
-        const totpSecrets = await TOTPSecret.find();
-        // Return the TOTP secrets
+        // Get the authenticated user ID from the request
+        const userId = req.userId;
+        
+        // Find the user to get their role
+        const user = await User.findById(userId);
+        if (!user) {
+            logger.error(`User not found: ${userId}`);
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        logger.info(`Getting TOTP secrets for user: ${userId}, role: ${user.role}`);
+        
+        // Determine query based on user role
+        let query;
+        if (user.role === 'admin') {
+            // Admin can see all TOTP secrets
+            query = {};
+            logger.info('Admin user - returning all secrets');
+        } else {
+            // Business users can only see their own TOTP secrets
+            query = { companyId: userId };
+            logger.info(`Business user - returning secrets with companyId: ${userId}`);
+        }
+        
+        // Find TOTP secrets based on the query
+        const totpSecrets = await TOTPSecret.find(query);
+        
+        logger.info(`Found ${totpSecrets.length} TOTP secrets`);
+        
+        // Return the filtered TOTP secrets
         return res.status(200).json(totpSecrets);
     } catch (error) {
         // Log the error
-        logger.error(error.message);
+        logger.error(`Error in getAllTOTPSecrets: ${error.message}`);
         // Return an error response
         return res.status(500).json({ message: 'Error retrieving TOTP secrets' });
     }

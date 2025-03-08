@@ -5,7 +5,7 @@ const { logRateLimitExceeded } = require('./analyticsMiddleware');
 // Create a limiter for API endpoints
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 200, // Limit each IP to 100 requests per windowMs
+    max: 100, // Limit each IP to 100 requests per windowMs
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
     handler: (req, res) => {
@@ -23,7 +23,7 @@ const apiLimiter = rateLimit({
 // Create a stricter limiter for auth endpoints
 const authLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 20, // Limit each IP to 5 failed requests per hour
+    max: 10, // Limit each IP to 5 failed requests per hour
     standardHeaders: true,
     legacyHeaders: false,
     handler: (req, res) => {
