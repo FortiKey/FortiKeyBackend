@@ -6,11 +6,11 @@ const User = require('../models/userModel');  // Import the User model
 // Create a new TOTP secret
 const createTOTPSecret = async (req, res) => {
     try {
-        const { company, externalUserId, backupCodes } = req.body;
+        const { company, externalUserId } = req.body;
 
-        if (!company || !externalUserId || !backupCodes) {
+        if (!company || !externalUserId) {
             logger.error("Missing required fields");
-            return res.status(400).json({ message: 'Missing required fields' });
+            return res.status(400).json({ message: 'Missing required fields (company and externalUserId are required)' });
         }
 
         // Generate a new TOTP secret
@@ -20,6 +20,11 @@ const createTOTPSecret = async (req, res) => {
             logger.error("Failed to generate TOTP secret");
             return res.status(500).json({ message: 'Failed to generate TOTP secret' });
         }
+
+        // Automatically generate backup codes (8 codes, each 6 characters long)
+        const backupCodes = Array.from({ length: 8 }, () =>
+            Math.random().toString(36).substring(2, 8).toUpperCase()
+        );
 
         // Get the authenticated user ID
         const userId = req.userId;
@@ -223,6 +228,124 @@ const validateTOTP = async (req, res) => {
     }
 };
 
+// Validate a backup code
+const validateBackupCode = async (req, res) => {
+    try {
+        const { externalUserId, backupCode } = req.body;
+
+        if (!externalUserId || !backupCode) {
+            logger.error("Missing required fields for backup code validation");
+            return res.status(400).json({ message: 'External user ID and backup code are required' });
+        }
+
+        // Find the TOTP secret by external user ID
+        const totpSecret = await TOTPSecret.findOne({ externalUserId });
+        if (!totpSecret) {
+            logger.error(`TOTP secret not found for user: ${externalUserId}`);
+            return res.status(404).json({ message: 'TOTP secret not found' });
+        }
+
+        // Decrypt the stored backup codes
+        const decryptedBackupCodes = totpSecret.decryptBackupCodes();
+        
+        // Check if the provided backup code matches any of the stored backup codes
+        const codeIndex = decryptedBackupCodes.findIndex(code => code === backupCode);
+        
+        if (codeIndex === -1) {
+            // Log the failed backup code attempt
+            const { logEvent } = require('./analyticsController');
+            logEvent({
+                companyId: totpSecret.companyId,
+                externalUserId,
+                eventType: 'backup_code_used',
+                success: false,
+                details: { error: 'Invalid backup code' }
+            }, req);
+            
+            return res.status(400).json({ message: 'Invalid backup code' });
+        }
+        
+        // Remove the used backup code from the array
+        const updatedBackupCodes = [...decryptedBackupCodes];
+        updatedBackupCodes.splice(codeIndex, 1);
+        
+        // Update the TOTP secret with the new backup codes array
+        totpSecret.backupCodes = updatedBackupCodes;
+        await totpSecret.save();
+        
+        // Log the successful backup code usage
+        const { logEvent } = require('./analyticsController');
+        logEvent({
+            companyId: totpSecret.companyId,
+            externalUserId,
+            eventType: 'backup_code_used',
+            success: true,
+            details: { 
+                backupCodeIndex: codeIndex,
+                remainingCodes: updatedBackupCodes.length
+            }
+        }, req);
+
+        return res.status(200).json({ 
+            message: 'Backup code is valid',
+            remainingCodes: updatedBackupCodes.length
+        });
+    } catch (error) {
+        logger.error("Error validating backup code:", error.message);
+        return res.status(500).json({ message: 'Error validating backup code', error: error.message });
+    }
+};
+
+// Regenerate backup codes
+const regenerateBackupCodes = async (req, res) => {
+    try {
+        const { externalUserId } = req.params;
+
+        if (!externalUserId) {
+            logger.error("Missing external user ID");
+            return res.status(400).json({ message: 'External user ID is required' });
+        }
+
+        // Find the TOTP secret by external user ID
+        const totpSecret = await TOTPSecret.findOne({ externalUserId });
+        if (!totpSecret) {
+            logger.error(`TOTP secret not found for user: ${externalUserId}`);
+            return res.status(404).json({ message: 'TOTP secret not found' });
+        }
+
+        // Generate new backup codes
+        const newBackupCodes = Array.from({ length: 8 }, () =>
+            Math.random().toString(36).substring(2, 8).toUpperCase()
+        );
+
+        // Update the backup codes
+        totpSecret.backupCodes = newBackupCodes;
+
+        // Save the updated TOTP secret
+        await totpSecret.save();
+
+        // Log the backup code regeneration
+        const { logEvent } = require('./analyticsController');
+        logEvent({
+            companyId: totpSecret.companyId,
+            externalUserId,
+            eventType: 'backup_codes_regenerated',
+            success: true,
+            details: { count: newBackupCodes.length }
+        }, req);
+
+        // Return the new backup codes
+        return res.status(200).json({
+            message: 'Backup codes regenerated successfully',
+            backupCodes: totpSecret.decryptBackupCodes()
+        });
+    } catch (error) {
+        logger.error("Error regenerating backup codes:", error.message);
+        return res.status(500).json({ message: 'Error regenerating backup codes', error: error.message });
+    }
+};
+
+
 module.exports = {
     createTOTPSecret,
     getAllTOTPSecrets,
@@ -231,4 +354,6 @@ module.exports = {
     updateTOTPSecret,
     deleteTOTPSecret,
     validateTOTP,
+    validateBackupCode,
+    regenerateBackupCodes
 };

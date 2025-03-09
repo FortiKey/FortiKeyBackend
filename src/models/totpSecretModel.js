@@ -23,6 +23,10 @@ const TOTPSecretSchema = new mongoose.Schema({
         type: [String],
         required: true,
     },
+    usedBackupCodes: {
+        type: [String],
+        default: [],
+    },
     externalUserId: {
         type: String,
         required: true,
