@@ -104,7 +104,7 @@ const login = async (req, res) => {
 const getProfile = async (req, res) => {
     try {
         // Get the user ID from the request
-        const user = await User.findById(req.userId).select('company firstName lastName email createdAt');
+        const user = await User.findById(req.userId).select('company firstName lastName email role createdAt');
         // Return the user profile
         res.status(200).json(user);
     } catch (error) {
