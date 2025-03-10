@@ -23,7 +23,7 @@ const apiLimiter = rateLimit({
 // Create a stricter limiter for auth endpoints
 const authLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 200, // Limit each IP to 5 failed requests per hour
+    max: 10, // Limit each IP to 10 failed requests per hour
     standardHeaders: true,
     legacyHeaders: false,
     handler: (req, res) => {

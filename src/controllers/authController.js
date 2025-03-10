@@ -103,9 +103,19 @@ const login = async (req, res) => {
 // Get user profile
 const getProfile = async (req, res) => {
     try {
-        // Get the user ID from the request
-        const user = await User.findById(req.userId).select('company firstName lastName email role createdAt');
-        // Return the user profile
+        const userId = req.params.id || req.userId;
+        console.log("Fetching user with ID:", userId);
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ error: "Invalid user ID format" });
+        }
+
+        const user = await User.findById(userId).select('company firstName lastName email role createdAt');
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
         res.status(200).json(user);
     } catch (error) {
         logger.error("Error getting user profile:", error.message);
