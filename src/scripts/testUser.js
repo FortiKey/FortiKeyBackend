@@ -1,10 +1,3 @@
-/**
- * Test User Analytics Data Seeder
- * 
- * This script creates a test user account and populates it with realistic 
- * usage analytics data for testing the analytics dashboard.
- */
-
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const User = require('../models/userModel');
@@ -20,7 +13,7 @@ dotenv.config();
 // Check if MONGODB_URI exists
 if (!process.env.MONGO_URI) {
   console.error('ERROR: MONGODB_URI environment variable is not set.');
-  console.error('Please make sure you have a .env file with MONGODB_URI defined.');
+  console.error('Please make sure you have a .env file with MONGO_URI defined.');
   process.exit(1);
 }
 
@@ -31,11 +24,6 @@ mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
     console.log('Connected to MongoDB successfully');
     logger.info('Connected to MongoDB');
-
-    // Drop the database before seeding
-    await mongoose.connection.dropDatabase();
-    console.log('Database dropped successfully');
-    logger.info('Database dropped successfully');
 
     seedTestData()
       .then(() => {
@@ -68,19 +56,25 @@ async function seedTestData() {
     // Clear existing test user data
     await clearExistingTestData();
 
-    // Create test user
-    const testUser = await createTestUser();
-    logger.info(`Created test user: ${testUser.email} with ID: ${testUser._id}`);
+    // Create test users
+    const testUsers = await createTestUsers();
+    logger.info('Created test users');
 
-    // Create test TOTP users with improved data for ViewAccounts page
-    const testTOTPUsers = await createTestTOTPUsers(testUser._id, 50);
-    logger.info(`Created ${testTOTPUsers.length} test TOTP users`);
+    // Create TOTP users for each company
+    const totpUserResults = await Promise.all(
+      testUsers.map(async (user) => {
+        const totpUsers = await createTestTOTPUsers(user._id, 50);
+        return { user, totpUsers };
+      })
+    );
 
-    // Generate usage analytics data
-    await generateAnalyticsData(testUser._id, testTOTPUsers);
-    logger.info('Generated analytics data');
+    // Generate usage analytics data for each user
+    for (const { user, totpUsers } of totpUserResults) {
+      await generateAnalyticsData(user._id, totpUsers);
+      logger.info(`Generated analytics data for ${user.company}`);
+    }
 
-    return testUser;
+    return testUsers;
   } catch (error) {
     logger.error('Error in seedTestData:', error.message);
     throw error;
@@ -91,42 +85,77 @@ async function seedTestData() {
  * Clear existing test data
  */
 async function clearExistingTestData() {
-  // Find existing test user
-  const existingUser = await User.findOne({ email: 'test@test.com' });
+  // Find test users by their email pattern
+  const testUsers = await User.find({ 
+    email: { 
+      $regex: /^test\.(petbarn|techinnovations|globalfinance)@fortikey\.com$/i 
+    } 
+  });
 
-  if (existingUser) {
-    // Delete usage data associated with this user
-    await Usage.deleteMany({ companyId: existingUser._id });
-    logger.info('Deleted existing usage data');
+  // If test users exist, delete their associated data
+  if (testUsers.length > 0) {
+    const userIds = testUsers.map(user => user._id);
 
-    // Delete TOTP secrets associated with this user
-    await TOTPSecret.deleteMany({ companyId: existingUser._id });
-    logger.info('Deleted existing TOTP secrets');
+    // Delete associated TOTP secrets
+    await TOTPSecret.deleteMany({ companyId: { $in: userIds } });
+    logger.info('Deleted TOTP secrets for test users');
 
-    // Delete the user
-    await User.deleteOne({ _id: existingUser._id });
-    logger.info('Deleted existing test user');
+    // Delete associated usage data
+    await Usage.deleteMany({ companyId: { $in: userIds } });
+    logger.info('Deleted usage data for test users');
+
+    // Delete the test users
+    await User.deleteMany({ _id: { $in: userIds } });
+    logger.info('Deleted test users');
   }
 }
 
 /**
- * Create a test user
+ * Create test users
  */
-async function createTestUser() {
-  const testUser = new User({
-    company: 'FortiKey Security',
-    firstName: 'Admin',
-    lastName: 'User',
-    email: 'test@test.com',
-    password: 'password123', // Set plain text password
-    role: 'admin', // Set as admin to access all users
-    apikey: require('crypto').randomBytes(32).toString('hex')
-  });
+async function createTestUsers() {
+  const testUsers = [
+    {
+      company: 'PetBarn',
+      firstName: 'Sarah',
+      lastName: 'Miller',
+      email: 'test.petbarn@fortikey.com',
+      password: 'password123',
+      role: 'user'
+    },
+    {
+      company: 'Tech Innovations',
+      firstName: 'Michael',
+      lastName: 'Johnson',
+      email: 'test.techinnovations@fortikey.com',
+      password: 'password123',
+      role: 'user'
+    },
+    {
+      company: 'Global Finance',
+      firstName: 'Emily',
+      lastName: 'Rodriguez',
+      email: 'test.globalfinance@fortikey.com',
+      password: 'password123',
+      role: 'user'
+    }
+  ];
 
-  const savedUser = await testUser.save();
-  console.log('Created test admin user:', savedUser);
+  // Save users and generate API keys
+  const savedUsers = await Promise.all(
+    testUsers.map(async (userData) => {
+      const user = new User({
+        ...userData,
+        apikey: require('crypto').randomBytes(32).toString('hex')
+      });
 
-  return savedUser;
+      const savedUser = await user.save();
+      console.log('Created test user:', savedUser);
+      return savedUser;
+    })
+  );
+
+  return savedUsers;
 }
 
 /**
@@ -150,7 +179,7 @@ async function createTestTOTPUsers(companyId, count) {
   const firstNames = [
     'James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda', 
     'William', 'Elizabeth', 'David', 'Susan', 'Richard', 'Jessica', 'Joseph', 'Sarah',
-    'Thomas', 'Karen', 'Charles', 'Nancy', 'Daniel', 'Lisa', 'Matthew', 'Margaret',
+    'Thomas', 'Karen', 'Charles', 'Nathan', 'Daniel', 'Lisa', 'Matthew', 'Margaret',
     'Anthony', 'Betty', 'Mark', 'Sandra', 'Donald', 'Ashley', 'Steven', 'Dorothy',
     'Andrew', 'Kimberly', 'Paul', 'Emily', 'Joshua', 'Donna', 'Kenneth', 'Michelle'
   ];
@@ -158,7 +187,7 @@ async function createTestTOTPUsers(companyId, count) {
   // Last names for generating realistic user identities
   const lastNames = [
     'Smith', 'Johnson', 'Williams', 'Jones', 'Brown', 'Davis', 'Miller', 'Wilson',
-    'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson', 'White', 'Harris', 'Martin',
+    'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson', 'Keen', 'Harris', 'Martin',
     'Thompson', 'Garcia', 'Martinez', 'Robinson', 'Clark', 'Rodriguez', 'Lewis', 'Lee',
     'Walker', 'Hall', 'Allen', 'Young', 'Hernandez', 'King', 'Wright', 'Lopez',
     'Hill', 'Scott', 'Green', 'Adams', 'Baker', 'Gonzalez', 'Nelson', 'Carter'
