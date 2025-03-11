@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/userModel');
 const TOTPSecret = require('../models/totpSecretModel');
 const Usage = require('../models/usageModel');
