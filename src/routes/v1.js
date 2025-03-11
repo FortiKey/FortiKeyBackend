@@ -84,6 +84,7 @@ router.delete('/business/profile/:userId', authMiddleware, apiLimiter, deleteUse
 // Admin routes
 router.get('/admin/business-users', authMiddleware, adminMiddleware, apiLimiter, getAllCompanyUsers);  // Get all business users
 router.get('/admin/business-users/:userId', authMiddleware, adminMiddleware, apiLimiter, getCompanyUserDetails);  // Get detailed info about a specific business user
+router.delete('/admin/business-users/:userId', authMiddleware, adminMiddleware, apiLimiter, deleteUserAsAdmin);  // Delete a business user and all associated data
 
 // API key routes
 router.get('/business/apikey', authMiddleware, apiLimiter, getCurrentAPIKey);  // Get the user's API key

@@ -104,6 +104,109 @@ const getCompanyUserDetails = async (req, res) => {
   }
 };
 
+const deleteUserAsAdmin = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+      // No need to check if admin is deleting themselves - adminMiddleware ensures they're an admin
+      logger.info(`Admin ${req.userId} is attempting to delete user ${userId}`);
+
+      // Find the user to be deleted
+      const userToDelete = await User.findById(userId);
+      if (!userToDelete) {
+          logger.warn(`Admin ${req.userId} attempted to delete non-existent user ${userId}`);
+          return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Log details for audit purposes
+      logger.info(`Deleting user ${userId} (${userToDelete.email}) and all associated data`);
+
+      // Start a session for transaction
+      const session = await User.startSession();
+      session.startTransaction();
+
+      try {
+          // Step 1: Delete all TOTP secrets associated with this user's company
+          const deletedTOTPSecrets = await TOTPSecret.deleteMany(
+              { companyId: userId },
+              { session }
+          );
+          logger.info(`Deleted ${deletedTOTPSecrets.deletedCount} TOTP secrets for user ${userId}`);
+
+          // Step 2: Delete API keys
+          let deletedAPIKeys = 0;
+          if (global.mongoose.models.APIKey) {
+              const apiKeyResult = await APIKey.deleteMany(
+                  { userId: userId },
+                  { session }
+              );
+              deletedAPIKeys = apiKeyResult.deletedCount;
+              logger.info(`Deleted ${deletedAPIKeys} API keys for user ${userId}`);
+          }
+
+          // Step 3: Delete usage/analytics data
+          const deletedUsage = await Usage.deleteMany(
+              { companyId: userId },
+              { session }
+          );
+          logger.info(`Deleted ${deletedUsage.deletedCount} usage records for user ${userId}`);
+
+          // Step 4: Finally delete the user
+          await User.findByIdAndDelete(userId, { session });
+          logger.info(`Successfully deleted user ${userId} (${userToDelete.email})`);
+
+          // Commit the transaction
+          await session.commitTransaction();
+          session.endSession();
+
+          // Log this event for admin auditing
+          if (global.mongoose.models.AuditLog) {
+              try {
+                  const AuditLog = global.mongoose.models.AuditLog;
+                  await AuditLog.create({
+                      adminId: req.userId,
+                      action: 'user_delete',
+                      targetId: userId,
+                      details: {
+                          email: userToDelete.email,
+                          company: userToDelete.company,
+                          deletedTOTPCount: deletedTOTPSecrets.deletedCount,
+                          deletedAPIKeyCount: deletedAPIKeys,
+                          deletedUsageCount: deletedUsage.deletedCount
+                      },
+                      timestamp: new Date()
+                  });
+              } catch (auditError) {
+                  logger.error(`Error creating audit log for user deletion: ${auditError.message}`);
+                  // Don't fail the operation if audit logging fails
+              }
+          }
+
+          // Return success
+          return res.status(200).json({ 
+              message: 'User and all associated data deleted successfully',
+              deletedUserId: userId,
+              deletedData: {
+                  totpSecrets: deletedTOTPSecrets.deletedCount,
+                  apiKeys: deletedAPIKeys,
+                  usageRecords: deletedUsage.deletedCount
+              }
+          });
+      } catch (transactionError) {
+          // If anything fails, abort the transaction
+          await session.abortTransaction();
+          session.endSession();
+          throw transactionError;
+      }
+  } catch (error) {
+      logger.error(`Error deleting user ${userId} as admin:`, error);
+      return res.status(500).json({ 
+          message: 'Failed to delete user',
+          error: error.message 
+      });
+  }
+};
+
 // Future feature....
 // const disableCompanyUser = async (req, res) => {
 // };
@@ -114,6 +217,7 @@ const getCompanyUserDetails = async (req, res) => {
 module.exports = {
   getAllCompanyUsers,
   getCompanyUserDetails,
+  deleteUserAsAdmin
 //   disableCompanyUser,
 //   enableCompanyUser
 };
