@@ -103,7 +103,7 @@ const login = async (req, res) => {
 // Get user profile
 const getProfile = async (req, res) => {
     try {
-        const userId = req.params.id || req.userId;
+        const userId = req.params.userIdid || req.userId;
         console.log("Fetching user with ID:", userId);
 
         if (!mongoose.Types.ObjectId.isValid(userId)) {

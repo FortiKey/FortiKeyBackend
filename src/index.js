@@ -11,6 +11,8 @@ dotenv.config();  // Initialise dotenv
 const app = express();  // Create an express app
 const port = process.env.PORT || 3000;  // Define the port
 
+app.set('trust proxy', 1);  // Trust the first proxy
+
 // Connect to the database
 connectDB();
 
