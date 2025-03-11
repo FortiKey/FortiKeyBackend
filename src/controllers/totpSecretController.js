@@ -175,20 +175,24 @@ const updateTOTPSecret = async (req, res) => {
 // Delete a TOTP secret by MongoDB document ID
 const deleteTOTPSecret = async (req, res) => {
     try {
-        // Get the MongoDB document ID from the request parameters
+        // Get the TOTP secret ID from the request
         const { id } = req.params;
-        // Delete the TOTP secret by MongoDB document ID
+        
+        // Find the TOTP secret by ID
         const deletedSecret = await TOTPSecret.findByIdAndDelete(id);
+        
         if (!deletedSecret) {
             return res.status(404).json({ message: 'TOTP secret not found' });
         }
+        
+        // Log the deletion
+        logger.info(`TOTP secret deleted: ${deletedSecret.externalUserId}`);
+    
         // Return a success response
-        return res.status(204).send();
+        res.status(204).send();
     } catch (error) {
-        // Log the error
-        logger.error(error.message);
-        // Return an error response
-        return res.status(500).json({ message: 'Error deleting TOTP secret' });
+        logger.error("Error deleting TOTP secret:", error.message);
+        res.status(500).json({ message: 'Error deleting TOTP secret' });
     }
 };
 

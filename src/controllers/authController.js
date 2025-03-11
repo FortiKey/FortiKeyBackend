@@ -184,21 +184,34 @@ const updateUser = async (req, res) => {
     }
 };
 
-// Delete user profile
 const deleteUser = async (req, res) => {
     try {
         // Get the user ID from the request
         const { userId } = req.params;
+        
         // Find the user by ID
-        const deletedUser = await User.findByIdAndDelete(userId);
+        const deletedUser = await User.findById(userId);
         if (!deletedUser) {
             return res.status(404).json({ message: 'User not found' });
         }
+
+        // Delete associated TOTP secrets
+        await TOTPSecret.deleteMany({ companyId: userId });
+        
+        // Delete associated usage data
+        await Usage.deleteMany({ companyId: userId });
+        
+        // Delete the user
+        await User.findByIdAndDelete(userId);
+        
+        // Log the deletion
+        logger.info(`User deleted: ${deletedUser.email} (${userId})`);
+        
         // Return a success response
         res.status(204).send();
     } catch (error) {
         logger.error("Error deleting user profile:", error.message);
-        res.status(400).json({ message: error.message });
+        res.status(500).json({ message: 'Error deleting user profile' });
     }
 };
 
