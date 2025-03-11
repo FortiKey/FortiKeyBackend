@@ -44,7 +44,8 @@ const {
 } = require('../controllers/analyticsController');
 const {
     getAllCompanyUsers,
-    getCompanyUserDetails
+    getCompanyUserDetails,
+    deleteUserAsAdmin
 } = require('../controllers/adminController');
 
 
