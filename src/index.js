@@ -14,9 +14,25 @@ const port = process.env.PORT || 3000;  // Define the port
 // Connect to the database
 connectDB();
 
+// Configure CORS with more specific options
+const corsOptions = {
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'http://localhost:3003',
+      'https://fortikey.netlify.app'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+    credentials: true,
+    maxAge: 86400 // 24 hours
+  };
+
 // Use middleware
 app.use(helmet());  // Use helmet
 app.use(cors());  // Use cors
+app.options('*', cors(corsOptions));  // Enable pre-flight requests
 app.use(express.json());  // Parse JSON bodies
 
 // Use the v1 routes

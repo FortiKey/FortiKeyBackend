@@ -42,7 +42,6 @@ const {
     getBackupCodeUsage,
     getTimeComparisons,
 } = require('../controllers/analyticsController');
-const { logRateLimitExceeded } = require('../middlewares/analyticsMiddleware');
 const {
     getAllCompanyUsers,
     getCompanyUserDetails
