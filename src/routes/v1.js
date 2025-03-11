@@ -11,7 +11,7 @@ const {
     validateBackupCode,
     regenerateBackupCodes
 } = require('../controllers/totpSecretController');  // Import the TOTP secret controller
-const { 
+const {
     register,
     login,
     getProfile,
@@ -22,15 +22,15 @@ const {
     deleteAPIKey,
     updatePassword
 } = require('../controllers/authController');
-const { 
+const {
     authMiddleware,
     apiKeyMiddleware
- } = require('../middlewares/authMiddleware');
+} = require('../middlewares/authMiddleware');
 const { adminMiddleware } = require('../middlewares/adminMiddleware');
-const { 
+const {
     apiLimiter,
-    authLimiter, 
-    totpLimiter 
+    authLimiter,
+    totpLimiter
 } = require('../middlewares/rateLimiter');
 const {
     getCompanyStats,
@@ -43,10 +43,10 @@ const {
     getTimeComparisons,
 } = require('../controllers/analyticsController');
 const { logRateLimitExceeded } = require('../middlewares/analyticsMiddleware');
-const { 
-    getAllCompanyUsers, 
-    getCompanyUserDetails 
-    } = require('../controllers/adminController');
+const {
+    getAllCompanyUsers,
+    getCompanyUserDetails
+} = require('../controllers/adminController');
 
 
 // Define a route for the health check
@@ -63,7 +63,15 @@ router.get('/totp-secrets/user/:externalUserId', apiKeyMiddleware, apiLimiter, g
 router.post('/totp-secrets/user/:externalUserId/regenerate-backup', apiKeyMiddleware, totpLimiter, regenerateBackupCodes);  // Regenerate backup codes
 router.get('/totp-secrets/:id', apiKeyMiddleware, apiLimiter, getTOTPSecretById);  // Get a TOTP secret by MongoDB document ID
 router.patch('/totp-secrets/:id', apiKeyMiddleware, apiLimiter, updateTOTPSecret);  // Update a TOTP secret by MongoDB document ID
-router.delete('/totp-secrets/:id', apiKeyMiddleware, apiLimiter, deleteTOTPSecret);  // Delete a TOTP secret by MongoDB document ID
+router.delete('/totp-secrets/:id',
+    (req, res, next) => {
+        // Try both auth methods
+        if (req.header('Authorization')) {
+            return authMiddleware(req, res, next);
+        }
+        return apiKeyMiddleware(req, res, next);
+    },
+    apiLimiter, deleteTOTPSecret);  // Delete a TOTP secret by MongoDB document ID
 
 
 // Auth routes
