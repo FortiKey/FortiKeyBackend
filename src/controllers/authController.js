@@ -1,5 +1,8 @@
 const User = require('../models/userModel');
+const TOTPSecret = require('../models/totpSecretModel');
+const Usage = require('../models/usageModel');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const { logger } = require('../middlewares/logger');
 const { logEvent } = require('../controllers/analyticsController');
 
@@ -53,7 +56,7 @@ const login = async (req, res) => {
         const isPasswordValid = await user.comparePassword(password);
         
         if (!isPasswordValid) {
-            // Log the failed login
+            // Log the success login
             logEvent({
                 eventType: 'login',
                 success: false,
@@ -103,23 +106,36 @@ const login = async (req, res) => {
 // Get user profile
 const getProfile = async (req, res) => {
     try {
-        const userId = req.params.userIdid || req.userId;
-        console.log("Fetching user with ID:", userId);
+        // Use userId from params, falling back to the authenticated user ID
+        const userId = req.params.userId || req.userId;
+        logger.info(`Attempting to fetch user profile with ID: ${userId}`);
+
+        // Make sure mongoose is imported
+        const mongoose = require('mongoose');
 
         if (!mongoose.Types.ObjectId.isValid(userId)) {
+            logger.warn(`Invalid user ID format: ${userId}`);
             return res.status(400).json({ error: "Invalid user ID format" });
         }
 
         const user = await User.findById(userId).select('company firstName lastName email role createdAt');
-
+        
         if (!user) {
+            logger.warn(`User not found with ID: ${userId}`);
             return res.status(404).json({ error: "User not found" });
         }
 
+        logger.info(`Successfully retrieved user profile for ID: ${userId}`);
         res.status(200).json(user);
     } catch (error) {
-        logger.error("Error getting user profile:", error.message);
-        res.status(400).json({ message: error.message });
+        // Log the full error object
+        logger.error("Error getting user profile:", error);
+        logger.error("Error stack trace:", error.stack);
+        
+        res.status(500).json({ 
+            message: "Error retrieving user profile", 
+            error: error.message 
+        });
     }
 };
 
