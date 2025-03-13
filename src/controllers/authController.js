@@ -2,7 +2,6 @@ const User = require('../models/userModel');
 const TOTPSecret = require('../models/totpSecretModel');
 const Usage = require('../models/usageModel');
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
 const { logger } = require('../middlewares/logger');
 const { logEvent } = require('../controllers/analyticsController');
 
