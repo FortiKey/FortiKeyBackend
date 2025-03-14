@@ -211,10 +211,20 @@ const deleteUser = async (req, res) => {
         }
 
         // Delete associated TOTP secrets
-        await TOTPSecret.deleteMany({ companyId: userId });
+        try {
+            await TOTPSecret.deleteMany({ companyId: userId });
+            logger.info(`Deleted TOTP secrets for user ${userId}`);
+        } catch (error) {
+            logger.error(`Error deleting TOTP secrets: ${error.message}`);
+        }
         
         // Delete associated usage data
-        await Usage.deleteMany({ companyId: userId });
+        try {
+            await Usage.deleteMany({ companyId: userId });
+            logger.info(`Deleted usage data for user ${userId}`);
+        } catch (error) {
+            logger.error(`Error deleting usage data: ${error.message}`);
+        }
         
         // Delete the user
         await User.findByIdAndDelete(userId);
@@ -225,7 +235,8 @@ const deleteUser = async (req, res) => {
         // Return a success response
         res.status(204).send();
     } catch (error) {
-        logger.error("Error deleting user profile:", error.message);
+        logger.error(`Error deleting user profile: ${error.message}`);
+        logger.error(`Error stack: ${error.stack}`);
         res.status(500).json({ message: 'Error deleting user profile' });
     }
 };

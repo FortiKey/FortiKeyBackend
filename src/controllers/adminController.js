@@ -67,6 +67,7 @@ const getCompanyUserDetails = async (req, res) => {
     const user = await User.findById(userId)
       .select('-password');
 
+    // Explicitly check for null user and return 404
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -78,29 +79,42 @@ const getCompanyUserDetails = async (req, res) => {
     const last30Days = new Date();
     last30Days.setDate(last30Days.getDate() - 30);
 
-    const usageStats = await Usage.aggregate([
-      {
-        $match: {
-          companyId: new mongoose.Types.ObjectId(String(userId)),
-          timestamp: { $gte: last30Days }
+    // Use try-catch for aggregate to handle potential errors
+    let usageStats = [];
+    try {
+      usageStats = await Usage.aggregate([
+        {
+          $match: {
+            companyId: new mongoose.Types.ObjectId(String(userId)),
+            timestamp: { $gte: last30Days }
+          }
+        },
+        {
+          $group: {
+            _id: "$eventType",
+            count: { $sum: 1 }
+          }
         }
-      },
-      {
-        $group: {
-          _id: "$eventType",
-          count: { $sum: 1 }
-        }
-      }
-    ]);
+      ]);
+    } catch (aggregateError) {
+      logger.error('Error in aggregate usage stats:', aggregateError);
+      // Continue with empty usage stats
+    }
 
-    res.status(200).json({
+    return res.status(200).json({
       user,
       totpCount,
       usageStats
     });
   } catch (error) {
     logger.error('Error getting user details:', error.message);
-    res.status(500).json({ message: 'Error retrieving user details' });
+    
+    // Check if it's a CastError (typically means invalid ID format)
+    if (error.name === 'CastError') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    return res.status(500).json({ message: 'Error retrieving user details' });
   }
 };
 
@@ -123,14 +137,18 @@ const deleteUserAsAdmin = async (req, res) => {
     session.startTransaction();
 
     try {
-      // Delete all TOTP secrets
-      const deletedTOTPSecrets = await TOTPSecret.deleteMany(
-        { companyId: userId },
-        { session }
-      );
-      logger.info(`Deleted ${deletedTOTPSecrets.deletedCount} TOTP secrets for user ${userId}`);
+      // Delete all TOTP secrets - handle errors but continue
+      try {
+        const deletedTOTPSecrets = await TOTPSecret.deleteMany(
+          { companyId: userId },
+          { session }
+        );
+        logger.info(`Deleted ${deletedTOTPSecrets.deletedCount} TOTP secrets for user ${userId}`);
+      } catch (totpError) {
+        logger.error(`Error deleting TOTP secrets: ${totpError.message}`);
+      }
 
-      // Delete usage/analytics data
+      // Delete usage/analytics data - handle errors but continue
       let deletedUsageCount = 0;
       try {
         if (Usage.modelName) {  // Check if it's a valid model
@@ -143,36 +161,37 @@ const deleteUserAsAdmin = async (req, res) => {
       } catch (usageError) {
         logger.error(`Error deleting usage records: ${usageError.message}`);
       }
-        // Step 3: Finally delete the user
-        await User.findByIdAndDelete(userId, { session });
-        logger.info(`Successfully deleted user ${userId} (${userToDelete.email})`);
 
-        // Commit the transaction
-        await session.commitTransaction();
-        session.endSession();
+      // Finally delete the user
+      await User.findByIdAndDelete(userId, { session });
+      logger.info(`Successfully deleted user ${userId} (${userToDelete.email})`);
 
-        // Return success
-        return res.status(200).json({
-          message: 'User and all associated data deleted successfully',
-          deletedUserId: userId,
-          deletedData: {
-            totpSecrets: deletedTOTPSecrets.deletedCount,
-            usageRecords: deletedUsageCount
-          }
-        });
-      } catch (transactionError) {
-        await session.abortTransaction();
-        session.endSession();
-        throw transactionError;
-      }
-    } catch (error) {
-      logger.error(`Error deleting user ${userId} as admin:`, error);
-      return res.status(500).json({
-        message: 'Failed to delete user',
-        error: error.message
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      // Return success
+      return res.status(200).json({
+        message: 'User and all associated data deleted successfully',
+        deletedUserId: userId,
+        deletedData: {
+          totpSecrets: typeof deletedTOTPSecrets !== 'undefined' ? deletedTOTPSecrets.deletedCount : 0,
+          usageRecords: deletedUsageCount
+        }
       });
+    } catch (transactionError) {
+      await session.abortTransaction();
+      session.endSession();
+      throw transactionError;
     }
-  };
+  } catch (error) {
+    logger.error(`Error deleting user ${userId} as admin:`, error);
+    return res.status(500).json({
+      message: 'Failed to delete user',
+      error: error.message
+    });
+  }
+};
 
   // Future feature....
   // const disableCompanyUser = async (req, res) => {

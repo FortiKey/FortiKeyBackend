@@ -1,16 +1,16 @@
-const request = require('supertest'); // Import supertest
-const express = require('express'); // Import express
-const mongoose = require('mongoose'); // Import mongoose
-const jwt = require('jsonwebtoken'); // Import jsonwebtoken
+const request = require('supertest');
+const express = require('express');
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
-const { connectDB } = require('../config/db'); // Import connectDB function
-const v1Routes = require('../routes/v1'); // Import v1 routes
-const User = require('../models/userModel'); // Import the user model
-const TOTPSecret = require('../models/totpSecretModel'); // Import the TOTP secret model
+const { connectDB } = require('../config/db');
+const v1Routes = require('../routes/v1');
+const User = require('../models/userModel');
+const TOTPSecret = require('../models/totpSecretModel');
 
-const dotenv = require('dotenv'); // Import dotenv
+const dotenv = require('dotenv');
 
-dotenv.config(); // Configure dotenv
+dotenv.config();
 
 // Create an express app
 const app = express();
@@ -22,6 +22,7 @@ app.use('/api/v1', v1Routes.router);
 // test variables
 let testUser;
 let testToken;
+let apiKey;
 let createdSecretId;
 const company = 'TestBusiness';
 const externalUserId = 'user123';
@@ -37,17 +38,22 @@ beforeAll(async () => {
         firstName: 'Test',
         lastName: 'User',
         email: 'totptester@example.com',
-        password: 'password123'
+        password: 'password123',
+        apikey: require('crypto').randomBytes(32).toString('hex') // Generate an API key
     });
 
     await testUser.save();
+    
+    // Store the API key
+    apiKey = testUser.apikey;
+    
     // Create a JWT token for the test user
     testToken = jwt.sign({ userId: testUser._id }, process.env.JWT_SECRET);
 
-    // Create a TOTP secret and store its ID
+    // Create a TOTP secret and store its ID using API key authentication
     const res = await request(app)
         .post('/api/v1/totp-secrets')
-        .set('Authorization', `Bearer ${testToken}`)
+        .set('X-API-Key', apiKey)
         .send({ company, externalUserId, backupCodes });
 
     createdSecretId = res.body._id;
@@ -66,7 +72,7 @@ afterAll(async () => {
 it('should get a TOTP secret by external user ID', async () => {
     const res = await request(app)
       .get(`/api/v1/totp-secrets/user/${externalUserId}`)
-      .set('Authorization', `Bearer ${testToken}`); // Add auth token
+      .set('X-API-Key', apiKey); // Use API key authentication
     
     expect(res.statusCode).toEqual(200);
     expect(res.body.externalUserId).toEqual(externalUserId);
@@ -76,7 +82,7 @@ it('should get a TOTP secret by external user ID', async () => {
 it('should get a TOTP secret by ID', async () => {
     const res = await request(app)
       .get(`/api/v1/totp-secrets/${createdSecretId}`)
-      .set('Authorization', `Bearer ${testToken}`); // Add auth token
+      .set('X-API-Key', apiKey); // Use API key authentication
       
     expect(res.statusCode).toEqual(200);
     expect(res.body._id).toEqual(createdSecretId);
@@ -87,6 +93,7 @@ it('should attempt to validate a TOTP token', async () => {
     // We're just testing the endpoint works, not that validation passes
     const res = await request(app)
       .post('/api/v1/totp-secrets/validate')
+      .set('X-API-Key', apiKey) // Use API key authentication
       .send({
         externalUserId,
         token: '123456' // Invalid token, but we just want to test the endpoint
@@ -101,8 +108,8 @@ it('should attempt to validate a TOTP token', async () => {
 it('should update a TOTP secret', async () => {
     const newBackupCodes = ['newcode1', 'newcode2'];
     const resUpdate = await request(app)
-      .patch(`/api/v1/totp-secrets/${createdSecretId}`) // Update the TOTP secret
-      .set('Authorization', `Bearer ${testToken}`) // Add auth token
+      .patch(`/api/v1/totp-secrets/${createdSecretId}`)
+      .set('X-API-Key', apiKey) // Use API key authentication
       .send({ backupCodes: newBackupCodes });
 
     expect(resUpdate.statusCode).toEqual(200);
@@ -113,7 +120,7 @@ it('should update a TOTP secret', async () => {
 it('should delete a TOTP secret', async () => {
     const resDelete = await request(app)
       .delete(`/api/v1/totp-secrets/${createdSecretId}`)
-      .set('Authorization', `Bearer ${testToken}`); // Add auth token
+      .set('X-API-Key', apiKey); // Use API key authentication
 
     expect(resDelete.statusCode).toEqual(204);
 });
@@ -122,7 +129,7 @@ it('should delete a TOTP secret', async () => {
 it('should get all TOTP secrets', async () => {
     const res = await request(app)
       .get('/api/v1/totp-secrets')
-      .set('Authorization', `Bearer ${testToken}`); // Add auth token
+      .set('Authorization', `Bearer ${testToken}`); // This endpoint uses JWT
       
     expect(res.statusCode).toEqual(200);
     expect(Array.isArray(res.body)).toBe(true);
