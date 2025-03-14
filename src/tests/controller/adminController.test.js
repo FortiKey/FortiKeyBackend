@@ -1,15 +1,15 @@
-const { getAllCompanyUsers, getCompanyUserDetails, deleteUserAsAdmin } = require('../controllers/adminController');
-const User = require('../models/userModel');
-const TOTPSecret = require('../models/totpSecretModel');
-const { Usage } = require('../models/usageModel');
-const { logger } = require('../middlewares/logger');
+const { getAllCompanyUsers, getCompanyUserDetails, deleteUserAsAdmin } = require('../../controllers/adminController');
+const User = require('../../models/userModel');
+const TOTPSecret = require('../../models/totpSecretModel');
+const { Usage } = require('../../models/usageModel');
+const { logger } = require('../../middlewares/logger');
 const mongoose = require('mongoose');
 
 // Mock the models and logger
-jest.mock('../models/userModel');
-jest.mock('../models/totpSecretModel');
-jest.mock('../models/usageModel');
-jest.mock('../middlewares/logger', () => ({
+jest.mock('../../models/userModel');
+jest.mock('../../models/totpSecretModel');
+jest.mock('../../models/usageModel');
+jest.mock('../../middlewares/logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),

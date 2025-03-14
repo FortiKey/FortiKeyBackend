@@ -1,4 +1,4 @@
-const { logger } = require('../middlewares/logger');
+const { logger } = require('../../middlewares/logger');
 
 describe('Logger', () => {
   it('should have proper log levels', () => {

@@ -5,7 +5,7 @@ const { logger } = require('../middlewares/logger');
 /**
  * Utility function to log events
  */
-const logEvent = (eventData, req) => {
+const logEvent = async (eventData, req) => {
   try {
     // Ensure req is valid
     if (!req || typeof req !== 'object') {
@@ -23,6 +23,8 @@ const logEvent = (eventData, req) => {
       userAgent: req.headers?.['user-agent'] || 'unknown',
       timestamp: new Date()
     };
+
+    await Usage.logEvent(eventLog);
 
     // Just log to the console/logger without database storage
     logger.info('Event logged', { event: eventLog });

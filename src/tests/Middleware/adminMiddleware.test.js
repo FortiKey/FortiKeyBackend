@@ -3,9 +3,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
-const { connectDB } = require('../config/db');
-const { adminMiddleware } = require('../middlewares/adminMiddleware');
-const User = require('../models/userModel');
+const { connectDB } = require('../../config/db');
+const { adminMiddleware } = require('../../middlewares/adminMiddleware');
+const User = require('../../models/userModel');
 
 describe('Admin Middleware', () => {
   let adminUser;

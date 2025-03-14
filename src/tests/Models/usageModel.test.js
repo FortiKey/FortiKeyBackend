@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
-const { Usage } = require('../models/usageModel');
-const { logger } = require('../middlewares/logger');
+const { Usage } = require('../../models/usageModel');
+const { logger } = require('../../middlewares/logger');
 
 // Mock the logger
-jest.mock('../middlewares/logger', () => ({
+jest.mock('../../middlewares/logger', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),

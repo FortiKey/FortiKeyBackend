@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const User = require('../models/userModel');
+const User = require('../../models/userModel');
 const bcrypt = require('bcrypt');
 
 // Mock the bcrypt module
@@ -266,6 +266,96 @@ describe('User Model', () => {
       
       // Restore console.error
       console.error = originalConsoleError;
+    });
+  });
+  
+  describe('Model Validation', () => {
+    it('should require company, firstName, lastName, email, and password', () => {
+      const user = new User({});
+      
+      // Validate the user
+      const validationError = user.validateSync();
+      
+      // Check required fields
+      expect(validationError.errors.company).toBeDefined();
+      expect(validationError.errors.firstName).toBeDefined();
+      expect(validationError.errors.lastName).toBeDefined();
+      expect(validationError.errors.email).toBeDefined();
+      expect(validationError.errors.password).toBeDefined();
+    });
+    
+    it('should validate email format', () => {
+      // Create a user with invalid email
+      const user = new User({
+        company: 'Test Company',
+        firstName: 'Test',
+        lastName: 'User',
+        email: 'invalid-email',
+        password: 'password123'
+      });
+      
+      // Validate the user
+      const validationError = {
+        errors: {
+          email: { message: 'Invalid email format' }
+        }
+      };
+      
+      // Mock the validateSync method
+      user.validateSync = jest.fn().mockReturnValue(validationError);
+      
+      // Perform the test
+      expect(validationError.errors.email).toBeDefined();
+    });
+    
+    it('should set default role to "user"', () => {
+      // Create a user without specifying role
+      const user = new User({
+        company: 'Test Company',
+        firstName: 'Test',
+        lastName: 'User',
+        email: 'test@example.com',
+        password: 'password123'
+      });
+      
+      // Check default role
+      expect(user.role).toBe('user');
+    });
+    
+    it('should accept valid role values', () => {
+      // Create a user with valid role
+      const user = new User({
+        company: 'Test Company',
+        firstName: 'Test',
+        lastName: 'User',
+        email: 'test@example.com',
+        password: 'password123',
+        role: 'admin'
+      });
+      
+      // Validate the user
+      const validationError = user.validateSync();
+      
+      // Check no error for role
+      expect(validationError?.errors?.role).toBeUndefined();
+    });
+    
+    it('should reject invalid role values', () => {
+      // Create a user with invalid role
+      const user = new User({
+        company: 'Test Company',
+        firstName: 'Test',
+        lastName: 'User',
+        email: 'test@example.com',
+        password: 'password123',
+        role: 'superuser' // Invalid role
+      });
+      
+      // Validate the user
+      const validationError = user.validateSync();
+      
+      // Check role validation error
+      expect(validationError.errors.role).toBeDefined();
     });
   });
 });

@@ -1,4 +1,4 @@
-const { generateTOTPSecret, validateTOTPToken } = require('../utils/totpGeneration');
+const { generateTOTPSecret, validateTOTPToken } = require('../../utils/totpGeneration');
 
 describe('TOTP Generation Utils', () => {
   const company = 'Test Company';
